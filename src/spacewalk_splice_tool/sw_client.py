@@ -12,9 +12,11 @@
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
-import xmlrpclib
 import pprint
+import xmlrpclib
 from optparse import OptionParser
+
+import facts
 
 class SpacewalkClient(object):
     
@@ -26,14 +28,21 @@ class SpacewalkClient(object):
         self.key = self.login()
         
     def login(self):
-        # login to server and grab authentication credentials
+        """
+         login to xmlrpc server and grab authentication credentials
+        """
         return self.connection.auth.login(self.username, self.password)
 
     def logout(self):
+        """
+         log out of the xmlrpc session
+        """
         self.connection.auth.logout(self.key)
     
     def get_active_systems(self, system_group=None):
-        # get list of all active systems
+        """
+         get list of all active systems
+        """
         if system_group:
             systemids = self.connection.systemgroup.listActiveSystemsInGroup(self.key, system_group)
         else:
@@ -43,24 +52,10 @@ class SpacewalkClient(object):
         return systemids
 
     def get_active_systems_details(self, active_system_ids):
-        ## This will be a batch call once the spacewalk apis are ready
-        # get system details
-        system_details = {}
-        for sysid in active_system_ids:
-            system_details[sysid] = {}
-            system_details[sysid]["details"] =  self.connection.system.getDetails(self.key, sysid)
-            # subscribed base channel
-            system_details[sysid]["subscribed_base_channel"] = self.connection.system.getSubscribedBaseChannel(self.key, sysid)
-            # subscribed child channels
-            system_details[sysid]["subscribed_child_channel"] = self.connection.system.listSubscribedChildChannels(self.key,sysid)
-            # get memory
-            system_details[sysid]["memory"] = self.connection.system.getMemory(self.key, sysid)
-            # get CPU info
-            system_details[sysid]["cpu"] = self.connection.system.getCpu(self.key, sysid)
-            # get Dmi info
-            system_details[sysid]["dmi"] = self.connection.system.getDmi(self.key, sysid)
-            # get Network Devices
-            system_details[sysid]["net_devices"] = self.connection.system.getNetworkDevices(self.key, sysid)
+        """
+         get system details for all active system ids
+        """
+        system_details = self.connection.system.listActiveSystemDetails(self.key, active_system_ids)
         return system_details
 
 def main():
@@ -78,6 +73,9 @@ def main():
     client = SpacewalkClient(SERVER_URL, username=options.username, password=options.password)
     active_systems = client.get_active_systems()
     system_details = client.get_active_systems_details(active_systems)
+    system_facts_by_id= {}
+    for system in system_details:
+        system_facts_by_id[system['id']] = facts.translate_sw_facts_to_subsmgr(system)
     client.logout()
     pprint.pprint(system_details)
     
