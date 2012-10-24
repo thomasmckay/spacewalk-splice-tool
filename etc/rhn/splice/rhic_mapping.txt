@@ -1,0 +1,2 @@
+## This mapping file maps which rhic applies to which system group.
+## FORMAT: system_group_id, RHIC
