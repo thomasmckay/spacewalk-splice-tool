@@ -16,17 +16,16 @@ import pprint
 import xmlrpclib
 from optparse import OptionParser
 
-import facts
+from spacewalk_splice_tool import facts
 
 class SpacewalkClient(object):
     
-    def __init__(self, serverurl, username, password):
-        self.server = serverurl
+    def __init__(self, hostname, username, password, handler="/rpc/api"):
         self.username = username
         self.password = password
-        self.connection = xmlrpclib.Server(serverurl, verbose=0)
+        self.connection = xmlrpclib.Server("https://" + hostname + handler, verbose=0)
         self.key = self.login()
-        
+
     def login(self):
         """
          login to xmlrpc server and grab authentication credentials
@@ -55,7 +54,7 @@ class SpacewalkClient(object):
         """
          get system details for all active system ids
         """
-        system_details = self.connection.system.listActiveSystemDetails(self.key, active_system_ids)
+        system_details = self.connection.system.listActiveSystemsDetails(self.key, active_system_ids)
         return system_details
 
 def main():
@@ -69,8 +68,7 @@ def main():
 
     (options, args) = parser.parse_args()
 
-    SERVER_URL = "https://" + options.server + "/rpc/api"
-    client = SpacewalkClient(SERVER_URL, username=options.username, password=options.password)
+    client = SpacewalkClient(options.server, options.username, options.password)
     active_systems = client.get_active_systems()
     system_details = client.get_active_systems_details(active_systems)
     system_facts_by_id= {}

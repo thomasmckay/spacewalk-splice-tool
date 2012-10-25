@@ -20,7 +20,6 @@ def translate_sw_facts_to_subsmgr(system_details):
     @type system_details: {}
     @return facts dict representing subscription mamager facts data
     """
-
     facts = dict()
     facts['systemid'] = system_details['id']
     facts.update(cpu_facts(system_details['cpu_info']))
@@ -28,6 +27,7 @@ def translate_sw_facts_to_subsmgr(system_details):
     facts.update(memory_facts(system_details))
     facts.update(guest_facts(system_details))
     return facts
+
 
 def cpu_facts(cpuinfo):
     """
@@ -59,8 +59,8 @@ def cpu_facts(cpuinfo):
     cpu_facts_dict['lscpu_dot_l3_cache'] = ""
     cpu_facts_dict['lscpu_dot_thread(s)_per_core'] = ""
     cpu_facts_dict['lscpu_dot_cpu_op-mode(s)'] = ""
-
     return cpu_facts_dict
+
 
 def memory_facts(meminfo):
     """
@@ -70,6 +70,7 @@ def memory_facts(meminfo):
     mem_facts_dict['memory_dot_memtotal'] = meminfo['ram']
     mem_facts_dict['memory_dot_swaptotal'] = meminfo['swap']
     return mem_facts_dict
+
 
 def network_facts(nwkinfo):
     """
@@ -97,11 +98,13 @@ def network_facts(nwkinfo):
 
     return nwk_facts_dict
 
+
 def guest_facts(guestinfo):
     guest_facts_dict = dict()
     if guestinfo.has_key('active_guest_info'):
         guest_facts_dict['active_guest_info'] = guestinfo['active_guest_info']
     return guest_facts_dict
+
 
 if __name__ == "__main__":
     sw_details_data = {'cpu_info': {'arch': 'x86_64',

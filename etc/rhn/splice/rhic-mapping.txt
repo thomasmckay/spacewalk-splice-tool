@@ -1,0 +1,4 @@
+## This mapping file maps which rhic applies to which system group.
+## FORMAT: system_group_id: RHIC_UUID
+ec2_group_1: f1a15470-5409-49a7-868e-4d4bba7aefae
+ec2_group_2: f1a15470-5409-49a7-868e-4d4bba7aefae
