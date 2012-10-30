@@ -1,1 +1,1 @@
-0 */4 * * * root /usr/bin/spacewalk-splice-checkin
+0 */4 * * * root /bin/bash --login -c "/usr/bin/spacewalk-splice-checkin > /dev/null"
