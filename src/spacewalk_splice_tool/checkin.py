@@ -12,6 +12,7 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 from optparse import OptionParser
 import pprint
+import os
 
 from spacewalk_splice_tool import facts, connect, utils, constants
 from spacewalk_splice_tool.sw_client import SpacewalkClient
@@ -61,11 +62,29 @@ def product_usage_model(system_details):
     return product_usage_list
 
 
-def upload():
+def upload(data):
     """
     Uploads the product usage model data to splice server
     """
-    pass
+    try:
+        cfg = get_checkin_config()
+        splice_conn = connect.BaseConnection(cfg["host"], cfg["port"], cfg["handler"],
+            cert_file=cfg["cert"], key_file=cfg["key"], ca_cert=cfg["ca"])
+        # upload the data to rcs
+        splice_conn.POST("/v1/productusage/", data)
+        utils.systemExit(os.EX_OK, "Successfully uploaded product usage data")
+    except Exception, e:
+        utils.systemExit(os.EX_DATAERR, "Error uploading ProductUsage Data; Error: %s" % e)
+
+def get_checkin_config():
+    return {
+        "host" : config.get("splice", "hostname"),
+        "port" : config.getint("splice", "port"),
+        "handler" : config.get("splice", "handler"),
+        "cert" : config.get("splice", "splice_id_cert"),
+        "key" : config.get("splice", "splice_id_key"),
+        "ca" : config.get("splice", "splice_ca_cert"),
+    }
 
 def main():
     # performs the data capture, translation and checkin to splice server
@@ -94,7 +113,8 @@ def main():
         map(lambda details : details.update({'rhic_uuid' : rhic_uuid}), system_details)
         # convert the system details to product usage model
         product_usage_data.extend(product_usage_model(system_details))
-    pprint.pprint(product_usage_data)
+#    pprint.pprint(product_usage_data)
+    upload(product_usage_data)
 
 if __name__ == "__main__":
-    upload()
+    main()

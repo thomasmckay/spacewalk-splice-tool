@@ -36,7 +36,6 @@ class BaseConnection(object):
 
     def set_ssl_context(self):
         context = SSL.Context("tlsv1")
-        context.set_verify(SSL.verify_fail_if_no_peer_cert, 1)
         if self.ca_cert:
             context.load_verify_info(self.ca_cert)
         if self.cert_file:
@@ -54,7 +53,7 @@ class BaseConnection(object):
         conn.request(request_type, self.handler + method, body=json.dumps(body), headers=self.headers)
         response = conn.getresponse()
         if response.status not in [200, 202]:
-            raise
+            raise Exception()
         data = response.read()
         if not len(data):
             return None

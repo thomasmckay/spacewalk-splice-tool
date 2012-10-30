@@ -14,20 +14,12 @@ from ConfigParser import SafeConfigParser
 
 import csv
 import re
-import time
+import sys
 
-def parseCSV(filepath):
-    in_file  = open(filepath, "rb")
-    reader = csv.reader(in_file)
-    lines = []
-    for line in reader:
-        print line
-        if not len(line):
-            continue
-        line = [l.strip() for l in line]
-        lines.append(line)
-    in_file.close()
-    return lines
+def systemExit(errcode, message=None):
+    if message:
+        sys.stderr.write(str(message)+'\n')
+    sys.exit(errcode)
 
 def read_mapping_file(mappingfile):
     f = open(mappingfile)
