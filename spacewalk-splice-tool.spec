@@ -1,6 +1,6 @@
 # spacewalk-splice-tool package
 Name:           spacewalk-splice-tool
-Version:        0.2
+Version:        0.3
 Release:        1%{?dist}
 Summary:        A tool for gathering active system checkin data from spacewalk server and report to Splice server
 
@@ -68,6 +68,15 @@ rm -rf %{buildroot}
 %doc LICENSE
 
 %changelog
+* Wed Oct 31 2012 Pradeep Kilambi <pkilambi@redhat.com> 0.3-1
+- Add logging support (pkilambi@redhat.com)
+- Adding requires on splice-common (pkilambi@redhat.com)
+- updating cron info and added a note if user wants to update the crontab
+  (pkilambi@redhat.com)
+- adding support to upload product usage (pkilambi@redhat.com)
+- adding rel-eng dir (pkilambi@redhat.com)
+- updating spec file (pkilambi@redhat.com)
+
 * Mon Oct 29 2012 Pradeep Kilambi <pkilambi@redhat.com> 0.2-1
 - new package built with tito
 
