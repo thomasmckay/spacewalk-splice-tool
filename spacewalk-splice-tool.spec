@@ -1,6 +1,6 @@
 # spacewalk-splice-tool package
 Name:           spacewalk-splice-tool
-Version:        0.4
+Version:        0.5
 Release:        1%{?dist}
 Summary:        A tool for gathering active system checkin data from spacewalk server and report to Splice server
 
@@ -68,6 +68,9 @@ rm -rf %{buildroot}
 %doc LICENSE
 
 %changelog
+* Wed Oct 31 2012 Pradeep Kilambi <pkilambi@redhat.com> 0.5-1
+- using local config to avoid django interference (pkilambi@redhat.com)
+
 * Wed Oct 31 2012 Pradeep Kilambi <pkilambi@redhat.com> 0.4-1
 - requiring current version of splice-common for compatibility
   (pkilambi@redhat.com)
