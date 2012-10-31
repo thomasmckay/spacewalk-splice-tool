@@ -21,9 +21,8 @@ from spacewalk_splice_tool import facts, connect, utils, constants
 from spacewalk_splice_tool.sw_client import SpacewalkClient
 from certutils import certutils
 from splice.common.connect import BaseConnection
-from splice.common import config
 
-CONFIG = config.init(config_file=constants.SPLICE_CHECKIN_CONFIG)
+CONFIG = utils.cfg_init(config_file=constants.SPLICE_CHECKIN_CONFIG)
 
 def init_logging():
     log_config = CONFIG.get("logging", "config")

@@ -14,7 +14,7 @@ BuildRequires:  python2-devel
 
 Requires: python-certutils
 Requires: subscription-manager-migration-data
-Requires: splice-common >= 0.76
+Requires: splice-common >= 0.77
 Requires: /usr/sbin/crond
 
 %description
