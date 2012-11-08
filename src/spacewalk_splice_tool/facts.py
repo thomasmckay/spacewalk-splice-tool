@@ -44,8 +44,8 @@ def cpu_facts(cpuinfo):
     cpu_facts_dict['lscpu_dot_model'] = cpuinfo['model']
     cpu_facts_dict['lscpu_dot_on-line_cpu(s)_list'] = ""
     cpu_facts_dict['lscpu_dot_byte_order'] = ""
-    cpu_facts_dict['lscpu_dot_cpu_socket(s)'] = ""
-    cpu_facts_dict['lscpu_dot_core(s)_per_socket'] = ""
+    cpu_facts_dict['lscpu_dot_cpu_socket(s)'] = 1
+    cpu_facts_dict['lscpu_dot_core(s)_per_socket'] = 1
     cpu_facts_dict['lscpu_dot_hypervisor_vendor'] = ""
     cpu_facts_dict['lscpu_dot_numa_node0_cpu(s)'] = ""
     cpu_facts_dict['lscpu_dot_bogomips'] = ""
@@ -67,8 +67,8 @@ def memory_facts(meminfo):
     Translate memory info
     """
     mem_facts_dict = dict()
-    mem_facts_dict['memory_dot_memtotal'] = meminfo['ram']
-    mem_facts_dict['memory_dot_swaptotal'] = meminfo['swap']
+    mem_facts_dict['memory_dot_memtotal'] = meminfo['ram'] * 1024
+    mem_facts_dict['memory_dot_swaptotal'] = meminfo['swap'] * 1024
     return mem_facts_dict
 
 
