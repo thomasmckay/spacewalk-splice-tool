@@ -7,7 +7,12 @@ from optparse import OptionParser
 def get_active_systems(conn, key):
     # get list of all active systems
     active_system_list = conn.system.listActiveSystems(key)
-    systemids = [{info['id'] : info['last_checkin_time']} for info in active_system_list]
+    systemids = []
+    for info in active_system_list:
+	systemid = {}
+	systemid['id'] = info['id']
+	systemid['last_checkin'] = info['last_checkin']
+	systemids.append(systemid)
     return systemids
 
 def get_active_systems_details(conn, key, active_systems):
@@ -51,6 +56,7 @@ def main():
     key = conn.auth.login(options.username, options.password)
 
     active_systems = get_active_systems(conn, key)
+    print active_systems
     system_details = get_active_systems_details(conn, key, active_systems)
     pprint.pprint(system_details)
     conn.auth.logout(key)

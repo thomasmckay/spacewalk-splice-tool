@@ -44,13 +44,13 @@ def cpu_facts(cpuinfo):
     cpu_facts_dict['lscpu_dot_model'] = cpuinfo['model']
     cpu_facts_dict['lscpu_dot_on-line_cpu(s)_list'] = ""
     cpu_facts_dict['lscpu_dot_byte_order'] = ""
-    cpu_facts_dict['lscpu_dot_cpu_socket(s)'] = 1
+    cpu_facts_dict['lscpu_dot_cpu_socket(s)'] = cpuinfo['socket_count']
     cpu_facts_dict['lscpu_dot_core(s)_per_socket'] = 1
     cpu_facts_dict['lscpu_dot_hypervisor_vendor'] = ""
     cpu_facts_dict['lscpu_dot_numa_node0_cpu(s)'] = ""
     cpu_facts_dict['lscpu_dot_bogomips'] = ""
     cpu_facts_dict['cpu_dot_core(s)_per_socket'] = ""
-    cpu_facts_dict['cpu_dot_cpu_socket(s)'] = ""
+    cpu_facts_dict['cpu_dot_cpu_socket(s)'] = cpuinfo['socket_count']
     cpu_facts_dict['lscpu_dot_virtualization_type'] = ""
     cpu_facts_dict['lscpu_dot_cpu_family'] = ""
     cpu_facts_dict['lscpu_dot_numa_node(s)'] = ""
@@ -84,14 +84,14 @@ def network_facts(nwkinfo):
     nwk_facts_dict['net_dot_interface_dot_lo_dot_mac_address'] = nwk_info_by_interface['lo']['hardware_address']
     nwk_facts_dict['net_dot_interface_dot_lo_dot_ipv4_broadcast'] = nwk_info_by_interface['lo']['broadcast']
     nwk_facts_dict['net_dot_interface_dot_lo_dot_ipv4_address'] = nwk_info_by_interface['lo']['ip']
-    nwk_facts_dict['net_dot_interface_dot_lo_dot_ipv6_address_dot_host'] = nwk_info_by_interface['lo']['ipv6'][0]['address']
+    #nwk_facts_dict['net_dot_interface_dot_lo_dot_ipv6_address_dot_host'] = nwk_info_by_interface['lo']['ipv6'][0]['address']
     nwk_facts_dict['net_dot_interface_dot_lo_dot_ipv4_netmask'] = nwk_info_by_interface['lo']['netmask']
-    nwk_facts_dict['net_dot_interface_dot_lo_dot_ipv6_netmask_dot_host'] = nwk_info_by_interface['lo']['ipv6'][0]['netmask']
+    #nwk_facts_dict['net_dot_interface_dot_lo_dot_ipv6_netmask_dot_host'] = nwk_info_by_interface['lo']['ipv6'][0]['netmask']
 
     nwk_facts_dict['net_dot_interface_dot_eth0_dot_mac_address'] = nwk_info_by_interface['eth0']['hardware_address']
     nwk_facts_dict["net_dot_interface_dot_eth0_dot_ipv4_netmask"] = nwk_info_by_interface['eth0']['netmask']
-    nwk_facts_dict['net_dot_interface_dot_eth0_dot_ipv6_address_dot_host'] = nwk_info_by_interface['eth0']['ipv6'][0]['address']
-    nwk_facts_dict['net_dot_interface_dot_eth0_dot_ipv6_netmask_dot_link'] = nwk_info_by_interface['eth0']['ipv6'][0]['netmask']
+    #nwk_facts_dict['net_dot_interface_dot_eth0_dot_ipv6_address_dot_host'] = nwk_info_by_interface['eth0']['ipv6'][0]['address']
+    #nwk_facts_dict['net_dot_interface_dot_eth0_dot_ipv6_netmask_dot_link'] = nwk_info_by_interface['eth0']['ipv6'][0]['netmask']
     nwk_facts_dict['net_dot_interface_dot_eth0_dot_ipv4_address'] = nwk_info_by_interface['eth0']['ip']
     nwk_facts_dict['net_dot_interface_dot_lo_dot_ipv4_broadcast'] = nwk_info_by_interface['eth0']['broadcast']
     nwk_facts_dict['net_dot_ipv4_address'] = nwk_info_by_interface['eth0']['ip']
