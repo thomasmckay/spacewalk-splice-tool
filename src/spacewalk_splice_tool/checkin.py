@@ -52,20 +52,19 @@ def get_product_ids(subsribedchannels):
 
 def get_splice_serv_id():
     """
-    Lookup the splice server id cert from /etc/pki/consumer/
+    return the splice server UUID to be used
     """
-    cutils = certutils.CertUtils()
-    cert_cn = cutils.get_subject_pieces(open(CONFIG.get("splice", "splice_id_cert")).read(), ['CN'])['CN']
-    return cert_cn
-
+    return CONFIG.get("splice", "splice_server_uuid")
 
 def product_usage_model(system_details):
     """
     Convert system details to product usage model
     """
     _LOG.info("Translating system details to product usage model")
+    _LOG.info("full detail list: %s" % system_details)
     product_usage_list = []
     for details in system_details:
+        _LOG.info("parsing detail: %s" % details)
         facts_data = facts.translate_sw_facts_to_subsmgr(details)
         product_usage = dict()
         # last_checkin time is UTC
@@ -131,8 +130,10 @@ def main():
     for system_group, rhic_uuid in rhic_sg_map.items():
         # get list of active systems per system group
         active_systems = client.get_active_systems(system_group=system_group)
+        _LOG.info("system list: %s" % active_systems)
         # get system details for all active systems
         system_details = client.get_active_systems_details(active_systems)
+        _LOG.info("full detail list: %s" % system_details)
         # include rhic_uuid in system details as if spacewalk is returning it
         map(lambda details : details.update({'rhic_uuid' : rhic_uuid}), system_details)
         # convert the system details to product usage model

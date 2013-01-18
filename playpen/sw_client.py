@@ -4,6 +4,19 @@ import xmlrpclib
 import pprint
 from optparse import OptionParser
 
+def get_origin(conn, key, label):
+    original_channel = conn.channel.software.getDetails(key, label)['clone_original']
+    if original_channel:
+        return get_origin(conn, key, original_channel)
+    return label
+        
+
+def get_clone_mapping(conn, key):
+    channel_list = conn.channel.listSoftwareChannels(key)
+    labels = map(lambda x : x['label'], channel_list)
+    return map(lambda x: {x: get_origin(conn, key, x)}, labels)
+
+
 def get_active_systems(conn, key):
     # get list of all active systems
     active_system_list = conn.system.listActiveSystems(key)
@@ -57,6 +70,8 @@ def main():
 
     active_systems = get_active_systems(conn, key)
     print active_systems
+    clone_mapping = get_clone_mapping(conn, key)
+    print clone_mapping
     system_details = get_active_systems_details(conn, key, active_systems)
     pprint.pprint(system_details)
     conn.auth.logout(key)
