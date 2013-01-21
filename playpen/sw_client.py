@@ -5,6 +5,7 @@ import pprint
 from optparse import OptionParser
 
 def get_origin(conn, key, label):
+    # walk up the channel->origin tree until we get to the root
     original_channel = conn.channel.software.getDetails(key, label)['clone_original']
     if original_channel:
         return get_origin(conn, key, original_channel)
@@ -13,6 +14,7 @@ def get_origin(conn, key, label):
 
 def get_clone_mapping(conn, key):
     channel_list = conn.channel.listSoftwareChannels(key)
+    # strip the full channel list to just the labels
     labels = map(lambda x : x['label'], channel_list)
     return map(lambda x: {x: get_origin(conn, key, x)}, labels)
 

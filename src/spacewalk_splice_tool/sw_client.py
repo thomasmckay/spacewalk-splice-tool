@@ -57,6 +57,19 @@ class SpacewalkClient(object):
         system_details = self.connection.system.listActiveSystemsDetails(self.key, active_system_ids)
         return system_details
 
+    def get_clone_origin_channel(self, channel_label):
+        # this returns the "root" channel that the given channel was cloned from,
+        # or the name of the channel itself if the "root" was passed in to begin with
+        original_channel = self.connection.channel.software.getDetails(self.key, channel_label)['clone_original']
+        if original_channel:
+            return self.get_clone_origin_channel(original_channel)
+        return channel_label
+
+    def get_channel_list(self):
+        channel_list = self.connection.channel.listSoftwareChannels(self.key)
+        return map(lambda x: x['label'], channel_list)
+
+
 def main():
     parser = OptionParser()
     parser.add_option("-s", "--server", dest="server",

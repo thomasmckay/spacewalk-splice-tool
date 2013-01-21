@@ -36,16 +36,18 @@ def init_logging():
 init_logging()
 _LOG = logging.getLogger(__name__)
 
-def get_product_ids(subsribedchannels):
+def get_product_ids(subscribedchannels, clone_map):
     """
     For the subscribed base and child channels look up product ids
     """
     _LOG.info("Translating subscribed channel data to product ids")
     channel_mappings = utils.read_mapping_file(constants.CHANNEL_PRODUCT_ID_MAPPING)
     product_ids = []
-    for channel in subsribedchannels:
-        if channel['channel_label'] in channel_mappings:
-            cert = channel_mappings[channel['channel_label']]
+    for channel in subscribedchannels:
+        # grab the origin
+        origin_channel = clone_map[channel['channel_label']]
+        if origin_channel in channel_mappings:
+            cert = channel_mappings[origin_channel]
             product_ids.append(cert.split('-')[-1].split('.')[0])
     return product_ids
 
@@ -56,7 +58,7 @@ def get_splice_serv_id():
     """
     return CONFIG.get("splice", "splice_server_uuid")
 
-def product_usage_model(system_details):
+def product_usage_model(system_details, clone_map):
     """
     Convert system details to product usage model
     """
@@ -71,7 +73,7 @@ def product_usage_model(system_details):
         product_usage['date'] = details['last_checkin'].value
         product_usage['consumer'] = details['rhic_uuid']
         product_usage['instance_identifier'] = facts_data['net_dot_interface_dot_eth0_dot_mac_address']
-        product_usage['allowed_product_info'] = get_product_ids(details['subscribed_channels'])
+        product_usage['allowed_product_info'] = get_product_ids(details['subscribed_channels'], clone_map)
         product_usage['unallowed_product_info'] = []
         product_usage['facts'] = facts_data
         product_usage['splice_server'] = get_splice_serv_id()
@@ -126,6 +128,11 @@ def main():
     rhic_sg_map =  utils.read_mapping_file(CONFIG.get("splice", "rhic_mappings"))
     product_usage_data = []
     start_time = time.time()
+    # build the clone mapping
+    clone_mapping = {}
+    for label in client.get_channel_list():
+        clone_mapping[label] = client.get_clone_origin_channel(label)
+    _LOG.info("clone map: %s" % clone_mapping)
     _LOG.info("Started capturing system data from spacewalk server and translating to product usage model")
     for system_group, rhic_uuid in rhic_sg_map.items():
         # get list of active systems per system group
@@ -137,7 +144,7 @@ def main():
         # include rhic_uuid in system details as if spacewalk is returning it
         map(lambda details : details.update({'rhic_uuid' : rhic_uuid}), system_details)
         # convert the system details to product usage model
-        product_usage_data.extend(product_usage_model(system_details))
+        product_usage_data.extend(product_usage_model(system_details, clone_mapping))
 #    pprint.pprint(product_usage_data)
     upload(product_usage_data)
     finish_time = time.time() - start_time
