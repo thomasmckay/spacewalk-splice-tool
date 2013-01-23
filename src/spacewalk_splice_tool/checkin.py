@@ -20,6 +20,9 @@ import logging.config
 from spacewalk_splice_tool import facts, connect, utils, constants
 from spacewalk_splice_tool.sw_client import SpacewalkClient
 from certutils import certutils
+from datetime import datetime
+from dateutil.tz import tzutc
+
 from splice.common.connect import BaseConnection
 
 CONFIG = utils.cfg_init(config_file=constants.SPLICE_CHECKIN_CONFIG)
@@ -56,7 +59,8 @@ def get_splice_serv_id():
     """
     return the splice server UUID to be used
     """
-    return CONFIG.get("splice", "splice_server_uuid")
+    cutils = certutils.CertUtils()
+    return cutils.get_subject_pieces(open(CONFIG.get("splice", "splice_id_cert")).read(), ['CN'])['CN']
 
 def product_usage_model(system_details, clone_map):
     """
@@ -80,6 +84,22 @@ def product_usage_model(system_details, clone_map):
         product_usage_list.append(product_usage)
     return product_usage_list
 
+def build_server_metadata(cfg):
+    """
+    Build splice server metadata obj
+    """
+    _LOG.info("building server metadata")
+    server_metadata = {}
+    cutils = certutils.CertUtils()
+    server_metadata['description'] = cfg["splice_server_description"]
+    server_metadata['environment'] = cfg["splice_server_environment"]
+    server_metadata['hostname'] = cfg["splice_server_hostname"]
+    server_metadata['uuid'] = cutils.get_subject_pieces(open(cfg["cert"]).read(), ['CN'])['CN']
+    server_metadata['created'] = datetime.now(tzutc()).isoformat()
+    server_metadata['modified'] = server_metadata['created']
+    # wrap obj for consumption by upstream rcs
+    return {"objects": [server_metadata]}
+
 
 def upload(data):
     """
@@ -89,6 +109,13 @@ def upload(data):
         cfg = get_checkin_config()
         splice_conn = BaseConnection(cfg["host"], cfg["port"], cfg["handler"],
             cert_file=cfg["cert"], key_file=cfg["key"], ca_cert=cfg["ca"])
+
+        # upload the server metadata to rcs
+        _LOG.info("sending metadata to server")
+        splice_conn.POST("/v1/spliceserver/", build_server_metadata(cfg))
+        msg = "Successfully uploaded server metadata %s" % time.ctime()
+        _LOG.info(msg)
+
         # upload the data to rcs
         splice_conn.POST("/v1/productusage/", data)
         msg = "Successfully uploaded product usage data %s" % time.ctime()
@@ -106,6 +133,9 @@ def get_checkin_config():
         "cert" : CONFIG.get("splice", "splice_id_cert"),
         "key" : CONFIG.get("splice", "splice_id_key"),
         "ca" : CONFIG.get("splice", "splice_ca_cert"),
+        "splice_server_environment" : CONFIG.get("splice", "splice_server_environment"),
+        "splice_server_hostname" : CONFIG.get("splice", "splice_server_hostname"),
+        "splice_server_description" : CONFIG.get("splice", "splice_server_description"),
     }
 
 def main():
