@@ -74,7 +74,10 @@ def product_usage_model(system_details, clone_map):
         facts_data = facts.translate_sw_facts_to_subsmgr(details)
         product_usage = dict()
         # last_checkin time is UTC
-        product_usage['date'] = details['last_checkin'].value
+        if details.has_key("inactive"):
+            product_usage['date'] = details['last_checkin']
+        else:
+            product_usage['date'] = details['last_checkin'].value
         product_usage['consumer'] = details['rhic_uuid']
         product_usage['instance_identifier'] = facts_data['net_dot_interface_dot_eth0_dot_mac_address']
         product_usage['allowed_product_info'] = get_product_ids(details['subscribed_channels'], clone_map)
@@ -170,12 +173,16 @@ def main():
         _LOG.info("system list: %s" % active_systems)
         # get system details for all active systems
         system_details = client.get_active_systems_details(active_systems)
+        inactive_systems = client.get_inactive_systems(system_group=system_group)
+        inactive_system_details = client.get_inactive_systems_details(inactive_systems)
+        system_details.extend(inactive_system_details)
         _LOG.info("full detail list: %s" % system_details)
         # include rhic_uuid in system details as if spacewalk is returning it
         map(lambda details : details.update({'rhic_uuid' : rhic_uuid}), system_details)
         # convert the system details to product usage model
         product_usage_data.extend(product_usage_model(system_details, clone_mapping))
-#    pprint.pprint(product_usage_data)
+    #
+    #pprint.pprint(product_usage_data)
     upload(product_usage_data)
     finish_time = time.time() - start_time
     _LOG.info("Finished capturing data, translating to ProductUsage model and uploading to splice server in %s seconds"  % finish_time)

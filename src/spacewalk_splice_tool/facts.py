@@ -26,6 +26,7 @@ def translate_sw_facts_to_subsmgr(system_details):
     facts.update(network_facts(system_details['network_devices']))
     facts.update(memory_facts(system_details))
     facts.update(guest_facts(system_details))
+    facts.update(inactive_facts(system_details))
     return facts
 
 
@@ -33,6 +34,10 @@ def cpu_facts(cpuinfo):
     """
     Translate the cpu facts from spacewalk server to subscription mgr format
     """
+    cpu_socket_count = "NotAvailable"
+    if cpuinfo.has_key("socket_count"):
+        cpu_socket_count = cpuinfo['socket_count']
+
     cpu_facts_dict = dict()
     cpu_facts_dict['lscpu_dot_l1d_cache'] = cpuinfo['cache']
     cpu_facts_dict['lscpu_dot_architecture'] = cpuinfo['arch']
@@ -44,13 +49,13 @@ def cpu_facts(cpuinfo):
     cpu_facts_dict['lscpu_dot_model'] = cpuinfo['model']
     cpu_facts_dict['lscpu_dot_on-line_cpu(s)_list'] = ""
     cpu_facts_dict['lscpu_dot_byte_order'] = ""
-    cpu_facts_dict['lscpu_dot_cpu_socket(s)'] = cpuinfo['socket_count']
+    cpu_facts_dict['lscpu_dot_cpu_socket(s)'] = cpu_socket_count
     cpu_facts_dict['lscpu_dot_core(s)_per_socket'] = 1
     cpu_facts_dict['lscpu_dot_hypervisor_vendor'] = ""
     cpu_facts_dict['lscpu_dot_numa_node0_cpu(s)'] = ""
     cpu_facts_dict['lscpu_dot_bogomips'] = ""
     cpu_facts_dict['cpu_dot_core(s)_per_socket'] = ""
-    cpu_facts_dict['cpu_dot_cpu_socket(s)'] = cpuinfo['socket_count']
+    cpu_facts_dict['cpu_dot_cpu_socket(s)'] = cpu_socket_count
     cpu_facts_dict['lscpu_dot_virtualization_type'] = ""
     cpu_facts_dict['lscpu_dot_cpu_family'] = ""
     cpu_facts_dict['lscpu_dot_numa_node(s)'] = ""
@@ -105,6 +110,14 @@ def guest_facts(guestinfo):
         guest_facts_dict['active_guest_info'] = guestinfo['active_guest_info']
     return guest_facts_dict
 
+def inactive_facts(details):
+    inactive_facts_dict = dict()
+    if details.has_key("inactive"):
+        if details["inactive"].has_key("last_boot"):
+            inactive_facts_dict["inactive_dot_last_boot"] = str(details["inactive"]["last_boot"])
+        if details["inactive"].has_key("last_checkin"):
+            inactive_facts_dict["inactive_dot_last_checkin"] = str(details["inactive"]["last_checkin"])
+    return inactive_facts_dict
 
 if __name__ == "__main__":
     sw_details_data = {'cpu_info': {'arch': 'x86_64',
