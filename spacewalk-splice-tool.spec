@@ -1,6 +1,6 @@
 # spacewalk-splice-tool package
 Name:           spacewalk-splice-tool
-Version:        0.5
+Version:        0.6
 Release:        1%{?dist}
 Summary:        A tool for gathering active system checkin data from spacewalk server and report to Splice server
 
@@ -68,6 +68,16 @@ rm -rf %{buildroot}
 %doc LICENSE
 
 %changelog
+* Wed Jan 30 2013 John Matthews <jmatthews@redhat.com> 0.6-1
+- Added support for "inactive" systems (jmatthews@redhat.com)
+- Update for new location of certs (jmatthews@redhat.com)
+- send server metadata before product usage (cduryee@redhat.com)
+- find root for cloned channels when calculating product usage
+  (cduryee@redhat.com)
+- additional debugging, and clone mapping POC (cduryee@redhat.com)
+- changes for socket support (wip) (cduryee@redhat.com)
+- fixing facts data to match what report server expects (pkilambi@redhat.com)
+
 * Wed Oct 31 2012 Pradeep Kilambi <pkilambi@redhat.com> 0.5-1
 - using local config to avoid django interference (pkilambi@redhat.com)
 
