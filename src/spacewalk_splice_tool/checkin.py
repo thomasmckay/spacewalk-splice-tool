@@ -101,8 +101,8 @@ def build_server_metadata(cfg):
     server_metadata['created'] = datetime.now(tzutc()).isoformat()
     server_metadata['modified'] = server_metadata['created']
     # wrap obj for consumption by upstream rcs
+    _LOG.info("Built follow for server metadata '%s'" % (server_metadata))
     return {"objects": [server_metadata]}
-
 
 def upload(data):
     """
@@ -115,18 +115,23 @@ def upload(data):
 
         # upload the server metadata to rcs
         _LOG.info("sending metadata to server")
-        splice_conn.POST("/v1/spliceserver/", build_server_metadata(cfg))
-        msg = "Successfully uploaded server metadata %s" % time.ctime()
-        _LOG.info(msg)
-
+        url = "/v1/spliceserver/"
+        status, body = splice_conn.POST(url, build_server_metadata(cfg))
+        _LOG.info("POST to %s: received %s %s" % (url, status, body))
+        if status != 204:
+            _LOG.error("Splice server metadata was not uploaded correctly")
+            utils.systemExit(os.EX_DATAERR, "Error uploading splice server data")
         # upload the data to rcs
-        splice_conn.POST("/v1/productusage/", data)
-        msg = "Successfully uploaded product usage data %s" % time.ctime()
-        _LOG.info(msg)
-        utils.systemExit(os.EX_OK, msg)
+        url = "/v1/productusage/"
+        status, body = splice_conn.POST(url, data)
+        _LOG.info("POST to %s: received %s %s" % (url, status, body))
+        if status != 202:
+            _LOG.error("ProductUsage data was not uploaded correctly")
+            utils.systemExit(os.EX_DATAERR, "Error uploading product usage data")
+        utils.systemExit(os.EX_OK, "Upload was successful")
     except Exception, e:
         _LOG.error("Error uploading ProductUsage Data; Error: %s" % e)
-        utils.systemExit(os.EX_DATAERR, "Error uploading ProductUsage Data; Error: %s" % e)
+        utils.systemExit(os.EX_DATAERR, "Error uploading; Error: %s" % e)
 
 def get_checkin_config():
     return {
