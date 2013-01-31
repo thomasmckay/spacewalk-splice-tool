@@ -1,6 +1,6 @@
 # spacewalk-splice-tool package
 Name:           spacewalk-splice-tool
-Version:        0.6
+Version:        0.7
 Release:        1%{?dist}
 Summary:        A tool for gathering active system checkin data from spacewalk server and report to Splice server
 
@@ -68,6 +68,10 @@ rm -rf %{buildroot}
 %doc LICENSE
 
 %changelog
+* Thu Jan 31 2013 John Matthews <jwmatthews@gmail.com> 0.7-1
+- Update to handle errors and display error messages from remote server
+  (jwmatthews@gmail.com)
+
 * Wed Jan 30 2013 John Matthews <jmatthews@redhat.com> 0.6-1
 - Added support for "inactive" systems (jmatthews@redhat.com)
 - Update for new location of certs (jmatthews@redhat.com)
