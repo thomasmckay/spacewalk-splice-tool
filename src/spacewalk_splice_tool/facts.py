@@ -34,7 +34,7 @@ def cpu_facts(cpuinfo):
     """
     Translate the cpu facts from spacewalk server to subscription mgr format
     """
-    cpu_socket_count = "NotAvailable"
+    cpu_socket_count = 0
     if cpuinfo.has_key("socket_count"):
         cpu_socket_count = cpuinfo['socket_count']
 
