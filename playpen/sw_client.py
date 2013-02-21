@@ -3,6 +3,7 @@
 import xmlrpclib
 import pprint
 from optparse import OptionParser
+from cp_client import CandlepinConnection
 
 def get_origin(conn, key, label):
     # walk up the channel->origin tree until we get to the root
@@ -17,6 +18,12 @@ def get_clone_mapping(conn, key):
     # strip the full channel list to just the labels
     labels = map(lambda x : x['label'], channel_list)
     return map(lambda x: {x: get_origin(conn, key, x)}, labels)
+
+def getNoteUuid(conn, key, sysid):
+    notes = conn.system.listNotes(key, sysid)
+    for note in notes:
+       if note['subject'] == 'candlepin_uuid':
+        return note['note']
 
 
 def get_active_systems(conn, key):
@@ -37,6 +44,7 @@ def get_active_systems_details(conn, key, active_systems):
         sysid = system['id']
         system_details[sysid] = {}
         system_details[sysid]["details"] =  conn.system.getDetails(key, sysid)
+        system_details[sysid]["candlepin_uuid"] =  getNoteUuid(conn, key, sysid)
         # get entitlement details ( currently this only returns system entitlements )
         system_details[sysid]["entitlements"] = conn.system.getEntitlements(key, sysid)
         # subscribed base channel

@@ -14,14 +14,23 @@ from optparse import OptionParser
 import pprint
 import time
 import os
+import sys
 import logging
 import logging.config
 
 from spacewalk_splice_tool import facts, connect, utils, constants
 from spacewalk_splice_tool.sw_client import SpacewalkClient
+from spacewalk_splice_tool.cpin_connect import CandlepinConnection
 from certutils import certutils
 from datetime import datetime
 from dateutil.tz import tzutc
+
+_LIBPATH = "/usr/share/rhsm"
+# add to the path if need be
+if _LIBPATH not in sys.path:
+    sys.path.append(_LIBPATH)
+
+from subscription_manager.certdirectory import CertificateDirectory
 
 from splice.common.connect import BaseConnection
 
@@ -52,7 +61,14 @@ def get_product_ids(subscribedchannels, clone_map):
         if origin_channel in channel_mappings:
             cert = channel_mappings[origin_channel]
             product_ids.append(cert.split('-')[-1].split('.')[0])
-    return product_ids
+    # reformat to how candlepin expects the product id list
+    # TODO: extremely inefficient to load this per-call!
+    cert_dir = CertificateDirectory("/usr/share/rhsm/product/RHEL-6/")
+    installed_products = []
+    for p in product_ids:
+        product_cert = cert_dir.findByProduct(str(p))
+        installed_products.append({"productId": product_cert.products[0].id, "productName": product_cert.products[0].name})
+    return installed_products
 
 
 def get_splice_serv_id():
@@ -62,30 +78,31 @@ def get_splice_serv_id():
     cutils = certutils.CertUtils()
     return cutils.get_subject_pieces(open(CONFIG.get("splice", "splice_id_cert")).read(), ['CN'])['CN']
 
-def product_usage_model(system_details, clone_map):
+def transform_to_consumers(system_details):
     """
-    Convert system details to product usage model
+    Convert system details to candlepin consumers. Note that this is an ersatz
+    consumer that gets processed again later, you cannot pass this directly
+    into candlepin.
     """
-    _LOG.info("Translating system details to product usage model")
+    _LOG.info("Translating system details to candlepin consumers")
     _LOG.info("full detail list: %s" % system_details)
-    product_usage_list = []
+    consumer_list = []
     for details in system_details:
         _LOG.info("parsing detail: %s" % details)
         facts_data = facts.translate_sw_facts_to_subsmgr(details)
-        product_usage = dict()
-        # last_checkin time is UTC
-        if details.has_key("inactive"):
-            product_usage['date'] = details['last_checkin']
-        else:
-            product_usage['date'] = details['last_checkin'].value
-        product_usage['consumer'] = details['rhic_uuid']
-        product_usage['instance_identifier'] = facts_data['net_dot_interface_dot_eth0_dot_mac_address']
-        product_usage['allowed_product_info'] = get_product_ids(details['subscribed_channels'], clone_map)
-        product_usage['unallowed_product_info'] = []
-        product_usage['facts'] = facts_data
-        product_usage['splice_server'] = get_splice_serv_id()
-        product_usage_list.append(product_usage)
-    return product_usage_list
+        consumer = dict()
+        consumer['id'] = details['candlepin_uuid']
+        consumer['facts'] = facts_data
+        # TODO: don't hard code this!
+        consumer['owner'] = 'admin'
+        consumer['name'] = details['name']
+        consumer['last_checkin'] = details['last_checkin']
+        consumer['installed_products'] = details['installed_products']
+
+        consumer_list.append(consumer)
+    return consumer_list
+
+
 
 def build_server_metadata(cfg):
     """
@@ -104,34 +121,27 @@ def build_server_metadata(cfg):
     _LOG.info("Built follow for server metadata '%s'" % (server_metadata))
     return {"objects": [server_metadata]}
 
-def upload(data):
+def upload_to_candlepin(consumers, sw_client):
     """
-    Uploads the product usage model data to splice server
+    Uploads consumer data to candlepin
     """
-    try:
-        cfg = get_checkin_config()
-        splice_conn = BaseConnection(cfg["host"], cfg["port"], cfg["handler"],
-            cert_file=cfg["cert"], key_file=cfg["key"], ca_cert=cfg["ca"])
+    candlepin_conn = CandlepinConnection()
 
-        # upload the server metadata to rcs
-        _LOG.info("sending metadata to server")
-        url = "/v1/spliceserver/"
-        status, body = splice_conn.POST(url, build_server_metadata(cfg))
-        _LOG.info("POST to %s: received %s %s" % (url, status, body))
-        if status != 204:
-            _LOG.error("Splice server metadata was not uploaded correctly")
-            utils.systemExit(os.EX_DATAERR, "Error uploading splice server data")
-        # upload the data to rcs
-        url = "/v1/productusage/"
-        status, body = splice_conn.POST(url, data)
-        _LOG.info("POST to %s: received %s %s" % (url, status, body))
-        if status != 202:
-            _LOG.error("ProductUsage data was not uploaded correctly")
-            utils.systemExit(os.EX_DATAERR, "Error uploading product usage data")
-        utils.systemExit(os.EX_OK, "Upload was successful")
-    except Exception, e:
-        _LOG.error("Error uploading ProductUsage Data; Error: %s" % e)
-        utils.systemExit(os.EX_DATAERR, "Error uploading; Error: %s" % e)
+    for consumer in consumers:
+        print "last checkin: %s" % consumer['last_checkin']
+        if consumer.get('id', None):
+            candlepin_conn.updateConsumer(uuid=consumer['id'],
+                                          facts=consumer['facts'],
+                                          installed_products=consumer['installed_products'],
+                                          last_checkin=consumer['last_checkin'])
+        else:
+            # if we don't have a candlepin ID for this system, treat as a new system
+            uuid = candlepin_conn.createConsumer(name=consumer['name'],
+                                                facts=consumer['facts'],
+                                                installed_products=consumer['installed_products'],
+                                                last_checkin=consumer['last_checkin'])
+            sw_client.set_candlepin_uuid(consumer['facts']['systemid'], uuid)
+            
 
 def get_checkin_config():
     return {
@@ -147,7 +157,7 @@ def get_checkin_config():
     }
 
 def main():
-    # performs the data capture, translation and checkin to splice server
+    # performs the data capture, translation and checkin to candlepin
     parser = OptionParser()
     parser.add_option("-s", "--server", dest="server", default=None,
         help="Name of the spacewalk server")
@@ -164,33 +174,36 @@ def main():
     _LOG.info("Established connection with server %s" % hostname)
     # get the system group to rhic mappings
     rhic_sg_map =  utils.read_mapping_file(CONFIG.get("splice", "rhic_mappings"))
-    product_usage_data = []
     start_time = time.time()
+    consumers = []
     # build the clone mapping
     clone_mapping = {}
     for label in client.get_channel_list():
         clone_mapping[label] = client.get_clone_origin_channel(label)
     _LOG.info("clone map: %s" % clone_mapping)
-    _LOG.info("Started capturing system data from spacewalk server and translating to product usage model")
+    _LOG.info("Started capturing system data from spacewalk server and transforming to candlepin model")
     for system_group, rhic_uuid in rhic_sg_map.items():
         # get list of active systems per system group
         active_systems = client.get_active_systems(system_group=system_group)
-        _LOG.info("system list: %s" % active_systems)
-        # get system details for all active systems
         system_details = client.get_active_systems_details(active_systems)
         inactive_systems = client.get_inactive_systems(system_group=system_group)
         inactive_system_details = client.get_inactive_systems_details(inactive_systems)
         system_details.extend(inactive_system_details)
-        _LOG.info("full detail list: %s" % system_details)
-        # include rhic_uuid in system details as if spacewalk is returning it
-        map(lambda details : details.update({'rhic_uuid' : rhic_uuid}), system_details)
-        # convert the system details to product usage model
-        product_usage_data.extend(product_usage_model(system_details, clone_mapping))
-    #
-    #pprint.pprint(product_usage_data)
-    upload(product_usage_data)
+        _LOG.info("full detail list (pre-transform): %s" % system_details)
+
+        # enrich with candlepin uuid if available
+        map(lambda details : details.update({'candlepin_uuid' : client.get_candlepin_uuid(details['id'])}), system_details)
+        # enrich with engineering product IDs
+        map(lambda details :
+                details.update({'installed_products' : get_product_ids(details['subscribed_channels'],
+                                clone_mapping)}), system_details)
+
+        # convert the system details to candlepin consumers
+        consumers.extend(transform_to_consumers(system_details))
+
+    _LOG.info("consumers (post transform): %s" % consumers)
+    upload_to_candlepin(consumers, client)
     finish_time = time.time() - start_time
-    _LOG.info("Finished capturing data, translating to ProductUsage model and uploading to splice server in %s seconds"  % finish_time)
 
 if __name__ == "__main__":
     main()

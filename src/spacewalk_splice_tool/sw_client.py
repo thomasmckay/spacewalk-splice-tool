@@ -21,6 +21,7 @@ import xmlrpclib
 from optparse import OptionParser
 
 from spacewalk_splice_tool import facts
+from cpin_connect import CandlepinConnection
 
 class SpacewalkClient(object):
     
@@ -134,6 +135,21 @@ class SpacewalkClient(object):
         channel_list = self.connection.channel.listSoftwareChannels(self.key)
         return map(lambda x: x['label'], channel_list)
 
+    def set_candlepin_uuid(self, sid, uuid):
+        if self.get_candlepin_uuid(sid):
+            raise Exception("candlepin_uuid already exists on %s!"  % sid)
+        self.connection.system.addNote(self.key, sid, 'candlepin_uuid', uuid)
+
+    def get_candlepin_uuid(self, sid):
+        notes = self.connection.system.listNotes(self.key, sid)
+        for note in notes:
+           if note['subject'] == 'candlepin_uuid':
+            return note['note']
+
+
+def transform_and_post_consumer(system, cpin_conn):
+    cpin_conn.createConsumer(name=system['name'], facts=facts.translate_sw_facts_to_subsmgr(system), installed_products=None) 
+    return system
 
 def main():
     parser = OptionParser()
@@ -156,11 +172,15 @@ def main():
         active_systems = client.get_active_systems()
         system_details = client.get_active_systems_details(active_systems)
 
+
+    pprint.pprint(system_details)
     system_facts_by_id= {}
+    cpin_conn = CandlepinConnection()
     for system in system_details:
-        system_facts_by_id[system['id']] = facts.translate_sw_facts_to_subsmgr(system)
+        pprint.pprint(transform_and_post_consumer(system, cpin_conn))
+        #system_facts_by_id[system['id']] = facts.translate_sw_facts_to_subsmgr(system)
     client.logout()
-    pprint.pprint(system_facts_by_id)
+    #pprint.pprint(system_facts_by_id)
 
 if __name__ == "__main__":
     main()

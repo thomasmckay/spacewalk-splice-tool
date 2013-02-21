@@ -39,6 +39,8 @@ def cpu_facts(cpuinfo):
         cpu_socket_count = cpuinfo['socket_count']
 
     cpu_facts_dict = dict()
+    # rules.js depends on uname.machine, not lscpu
+    cpu_facts_dict['uname.machine'] = cpuinfo['arch']
     cpu_facts_dict['lscpu_dot_l1d_cache'] = cpuinfo['cache']
     cpu_facts_dict['lscpu_dot_architecture'] = cpuinfo['arch']
     cpu_facts_dict['lscpu_dot_stepping'] = cpuinfo['stepping']
