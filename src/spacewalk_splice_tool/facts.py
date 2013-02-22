@@ -41,31 +41,31 @@ def cpu_facts(cpuinfo):
     cpu_facts_dict = dict()
     # rules.js depends on uname.machine, not lscpu
     cpu_facts_dict['uname.machine'] = cpuinfo['arch']
-    cpu_facts_dict['lscpu_dot_l1d_cache'] = cpuinfo['cache']
-    cpu_facts_dict['lscpu_dot_architecture'] = cpuinfo['arch']
-    cpu_facts_dict['lscpu_dot_stepping'] = cpuinfo['stepping']
-    cpu_facts_dict['lscpu_dot_cpu_mhz'] = cpuinfo['mhz']
-    cpu_facts_dict['lscpu_dot_vendor_id'] = cpuinfo['vendor']
-    cpu_facts_dict['lscpu_dot_cpu(s)'] = cpuinfo['count']
-    cpu_facts_dict['cpu_dot_cpu(s)'] = cpuinfo['count']
-    cpu_facts_dict['lscpu_dot_model'] = cpuinfo['model']
-    cpu_facts_dict['lscpu_dot_on-line_cpu(s)_list'] = ""
-    cpu_facts_dict['lscpu_dot_byte_order'] = ""
-    cpu_facts_dict['lscpu_dot_cpu_socket(s)'] = cpu_socket_count
-    cpu_facts_dict['lscpu_dot_core(s)_per_socket'] = 1
-    cpu_facts_dict['lscpu_dot_hypervisor_vendor'] = ""
-    cpu_facts_dict['lscpu_dot_numa_node0_cpu(s)'] = ""
-    cpu_facts_dict['lscpu_dot_bogomips'] = ""
-    cpu_facts_dict['cpu_dot_core(s)_per_socket'] = ""
-    cpu_facts_dict['cpu_dot_cpu_socket(s)'] = cpu_socket_count
-    cpu_facts_dict['lscpu_dot_virtualization_type'] = ""
-    cpu_facts_dict['lscpu_dot_cpu_family'] = ""
-    cpu_facts_dict['lscpu_dot_numa_node(s)'] = ""
-    cpu_facts_dict['lscpu_dot_l1i_cache'] = ""
-    cpu_facts_dict['lscpu_dot_l2_cache'] = ""
-    cpu_facts_dict['lscpu_dot_l3_cache'] = ""
-    cpu_facts_dict['lscpu_dot_thread(s)_per_core'] = ""
-    cpu_facts_dict['lscpu_dot_cpu_op-mode(s)'] = ""
+    cpu_facts_dict['lscpu.l1d_cache'] = cpuinfo['cache']
+    cpu_facts_dict['lscpu.architecture'] = cpuinfo['arch']
+    cpu_facts_dict['lscpu.stepping'] = cpuinfo['stepping']
+    cpu_facts_dict['lscpu.cpu_mhz'] = cpuinfo['mhz']
+    cpu_facts_dict['lscpu.vendor_id'] = cpuinfo['vendor']
+    cpu_facts_dict['lscpu.cpu(s)'] = cpuinfo['count']
+    cpu_facts_dict['cpu.cpu(s)'] = cpuinfo['count']
+    cpu_facts_dict['lscpu.model'] = cpuinfo['model']
+    cpu_facts_dict['lscpu.on-line_cpu(s)_list'] = ""
+    cpu_facts_dict['lscpu.byte_order'] = ""
+    cpu_facts_dict['lscpu.cpu_socket(s)'] = cpu_socket_count
+    cpu_facts_dict['lscpu.core(s)_per_socket'] = 1
+    cpu_facts_dict['lscpu.hypervisor_vendor'] = ""
+    cpu_facts_dict['lscpu.numa_node0_cpu(s)'] = ""
+    cpu_facts_dict['lscpu.bogomips'] = ""
+    cpu_facts_dict['cpu.core(s)_per_socket'] = ""
+    cpu_facts_dict['cpu.cpu_socket(s)'] = cpu_socket_count
+    cpu_facts_dict['lscpu.virtualization_type'] = ""
+    cpu_facts_dict['lscpu.cpu_family'] = ""
+    cpu_facts_dict['lscpu.numa_node(s)'] = ""
+    cpu_facts_dict['lscpu.l1i_cache'] = ""
+    cpu_facts_dict['lscpu.l2_cache'] = ""
+    cpu_facts_dict['lscpu.l3_cache'] = ""
+    cpu_facts_dict['lscpu.thread(s)_per_core'] = ""
+    cpu_facts_dict['lscpu.cpu_op-mode(s)'] = ""
     return cpu_facts_dict
 
 
