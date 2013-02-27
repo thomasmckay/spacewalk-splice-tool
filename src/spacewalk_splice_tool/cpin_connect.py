@@ -37,6 +37,21 @@ class CandlepinConnection():
         self.cp.updateConsumer(uuid, facts=facts, installed_products=installed_products)
         self.cp.checkin(uuid, self._convert_date(last_checkin))
 
+    def getConsumers(self, owner=None):
+        if owner is None:
+            owner = self.owner
+        return self.cp.getConsumers(owner)
+
+    def getConsumerFacts(self, uuid=None):
+        if uuid is None:
+           raise Exception("no uuid provided") 
+        return self.cp.getConsumer(uuid)['facts']
+
+    def getEntitlements(self, uuid=None):
+        if uuid is None:
+           raise Exception("no uuid provided") 
+        return self.cp.getEntitlementList(uuid)
+
     def _convert_date(self, dt):
         #convert from xmlrpclib.DateTime to datetime
         #WARNING: this assumes UTC!!

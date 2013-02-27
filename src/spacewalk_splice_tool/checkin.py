@@ -14,6 +14,7 @@ from optparse import OptionParser
 import pprint
 import time
 import os
+import re
 import sys
 import logging
 import logging.config
@@ -78,6 +79,50 @@ def get_splice_serv_id():
     cutils = certutils.CertUtils()
     return cutils.get_subject_pieces(open(CONFIG.get("splice", "splice_id_cert")).read(), ['CN'])['CN']
 
+def transform_facts_to_rcs(facts):
+    # rcs doesn't like the "." in fact names
+    rcs_facts = {}
+    
+    for f in facts.keys():
+        rcs_facts[f.replace('.', '_dot_')] = facts[f]
+
+    return rcs_facts
+
+def transform_entitlements_to_rcs(entitlements):
+    rcs_ents = []
+    for e in entitlements:
+        rcs_ent = {}
+        rcs_ent['account'] = e['accountNumber']
+        rcs_ent['contract'] = e['contractNumber']
+        rcs_ent['product'] = e['pool']['productId']
+        rcs_ent['quantity'] = e['pool']['quantity']
+        rcs_ents.append(rcs_ent)
+
+    return rcs_ents
+        
+def _get_splice_server_uuid():
+    """
+    obtains the UUID that sst is emulating
+    """
+    cfg = get_checkin_config()
+    cutils = certutils.CertUtils()
+    return cutils.get_subject_pieces(open(cfg["cert"]).read(), ['CN'])['CN']
+
+def transform_to_rcs(consumer):
+    """
+    convert a candlepin consumer into something parsable by RCS
+    as a MarketingProductUsage obj
+    """
+    retval = {}
+    retval['splice_server'] = _get_splice_server_uuid()
+    retval['date'] = consumer['lastCheckin']
+    # these two fields are populated by rcs
+    retval['created'] = ""
+    retval['updated'] = ""
+    retval['instance_identifier'] = consumer['uuid']
+    return retval
+
+
 def transform_to_consumers(system_details):
     """
     Convert system details to candlepin consumers. Note that this is an ersatz
@@ -103,23 +148,60 @@ def transform_to_consumers(system_details):
     return consumer_list
 
 
-
 def build_server_metadata(cfg):
     """
     Build splice server metadata obj
     """
     _LOG.info("building server metadata")
     server_metadata = {}
-    cutils = certutils.CertUtils()
     server_metadata['description'] = cfg["splice_server_description"]
     server_metadata['environment'] = cfg["splice_server_environment"]
     server_metadata['hostname'] = cfg["splice_server_hostname"]
-    server_metadata['uuid'] = cutils.get_subject_pieces(open(cfg["cert"]).read(), ['CN'])['CN']
+    server_metadata['uuid'] = _get_splice_server_uuid()
     server_metadata['created'] = datetime.now(tzutc()).isoformat()
-    server_metadata['modified'] = server_metadata['created']
+    server_metadata['updated'] = server_metadata['created']
     # wrap obj for consumption by upstream rcs
     _LOG.info("Built follow for server metadata '%s'" % (server_metadata))
     return {"objects": [server_metadata]}
+
+def get_candlepin_consumers():
+    candlepin_conn = CandlepinConnection()
+    return candlepin_conn.getConsumers()
+
+def get_candlepin_entitlements(uuid):
+    candlepin_conn = CandlepinConnection()
+    return candlepin_conn.getEntitlements(uuid)
+
+def get_candlepin_consumer_facts(uuid):
+    candlepin_conn = CandlepinConnection()
+    return candlepin_conn.getConsumerFacts(uuid)
+
+def upload_to_rcs(data):
+    try:
+        cfg = get_checkin_config()
+        splice_conn = BaseConnection(cfg["host"], cfg["port"], cfg["handler"],
+            cert_file=cfg["cert"], key_file=cfg["key"], ca_cert=cfg["ca"])
+
+        # upload the server metadata to rcs
+        _LOG.info("sending metadata to server")
+        url = "/v1/spliceserver/"
+        status, body = splice_conn.POST(url, build_server_metadata(cfg))
+        _LOG.info("POST to %s: received %s %s" % (url, status, body))
+        if status != 204:
+            _LOG.error("Splice server metadata was not uploaded correctly")
+            utils.systemExit(os.EX_DATAERR, "Error uploading splice server data")
+        # upload the data to rcs
+        url = "/v1/marketingproductusage/"
+        status, body = splice_conn.POST(url, data)
+        _LOG.info("POST to %s: received %s %s" % (url, status, body))
+        if status != 202 and status != 204:
+            _LOG.error("ProductUsage data was not uploaded correctly")
+            utils.systemExit(os.EX_DATAERR, "Error uploading product usage data")
+        utils.systemExit(os.EX_OK, "Upload was successful")
+    except Exception, e:
+        _LOG.error("Error uploading MarketingProductUsage Data; Error: %s" % e)
+        utils.systemExit(os.EX_DATAERR, "Error uploading; Error: %s" % e)
+
 
 def upload_to_candlepin(consumers, sw_client):
     """
@@ -128,7 +210,6 @@ def upload_to_candlepin(consumers, sw_client):
     candlepin_conn = CandlepinConnection()
 
     for consumer in consumers:
-        print "last checkin: %s" % consumer['last_checkin']
         if consumer.get('id', None):
             candlepin_conn.updateConsumer(uuid=consumer['id'],
                                           facts=consumer['facts'],
@@ -156,6 +237,12 @@ def get_checkin_config():
         "splice_server_description" : CONFIG.get("splice", "splice_server_description"),
     }
 
+def build_rcs_data(mkt_usage):
+    """
+    wraps the marketing usage data in the right format for uploading
+    """
+    return {"objects": mkt_usage}
+
 def main():
     # performs the data capture, translation and checkin to candlepin
     parser = OptionParser()
@@ -182,6 +269,7 @@ def main():
         clone_mapping[label] = client.get_clone_origin_channel(label)
     _LOG.info("clone map: %s" % clone_mapping)
     _LOG.info("Started capturing system data from spacewalk server and transforming to candlepin model")
+    print "retrieving data from spacewalk..."
     for system_group, rhic_uuid in rhic_sg_map.items():
         # get list of active systems per system group
         active_systems = client.get_active_systems(system_group=system_group)
@@ -202,7 +290,21 @@ def main():
         consumers.extend(transform_to_consumers(system_details))
 
     _LOG.info("consumers (post transform): %s" % consumers)
+    print "found %s systems to upload into candlepin" % len(consumers)
+    print "uploading to candlepin..."
     upload_to_candlepin(consumers, client)
+    print "done"
+    # now pull put out of candlepin, and into rcs!
+    cpin_consumers = get_candlepin_consumers()
+
+    # create the base marketing usage list
+    rcs_mkt_usage = map(transform_to_rcs, cpin_consumers)
+    # enrich with facts
+    map(lambda rmu : rmu.update({'facts' : transform_facts_to_rcs(get_candlepin_consumer_facts(rmu['instance_identifier']))}), rcs_mkt_usage)
+    # enrich with product usage info
+    map(lambda rmu : rmu.update({'product_info' : transform_entitlements_to_rcs(get_candlepin_entitlements(rmu['instance_identifier']))}), rcs_mkt_usage)
+    
+    upload_to_rcs(build_rcs_data(rcs_mkt_usage))
     finish_time = time.time() - start_time
 
 if __name__ == "__main__":
