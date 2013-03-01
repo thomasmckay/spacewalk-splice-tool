@@ -95,7 +95,7 @@ def transform_entitlements_to_rcs(entitlements):
         rcs_ent['account'] = e['accountNumber']
         rcs_ent['contract'] = e['contractNumber']
         rcs_ent['product'] = e['pool']['productId']
-        rcs_ent['quantity'] = e['pool']['quantity']
+        rcs_ent['quantity'] = e['quantity']
         rcs_ents.append(rcs_ent)
 
     return rcs_ents
