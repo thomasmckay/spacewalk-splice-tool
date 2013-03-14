@@ -260,8 +260,6 @@ def main():
     password = options.password or CONFIG.get("satellite", "password")
     client = SpacewalkClient(hostname, username=username, password=password)
     _LOG.info("Established connection with server %s" % hostname)
-    # get the system group to rhic mappings
-    rhic_sg_map =  utils.read_mapping_file(CONFIG.get("splice", "rhic_mappings"))
     start_time = time.time()
     consumers = []
     # build the clone mapping
@@ -271,24 +269,23 @@ def main():
     _LOG.info("clone map: %s" % clone_mapping)
     _LOG.info("Started capturing system data from spacewalk server and transforming to candlepin model")
     print "retrieving data from spacewalk..."
-    for system_group, rhic_uuid in rhic_sg_map.items():
-        # get list of active systems per system group
-        active_systems = client.get_active_systems(system_group=system_group)
-        system_details = client.get_active_systems_details(active_systems)
-        inactive_systems = client.get_inactive_systems(system_group=system_group)
-        inactive_system_details = client.get_inactive_systems_details(inactive_systems)
-        system_details.extend(inactive_system_details)
-        _LOG.info("full detail list (pre-transform): %s" % system_details)
+    # get list of active systems per system group
+    active_systems = client.get_active_systems()
+    system_details = client.get_active_systems_details(active_systems)
+    inactive_systems = client.get_inactive_systems()
+    inactive_system_details = client.get_inactive_systems_details(inactive_systems)
+    system_details.extend(inactive_system_details)
+    _LOG.info("full detail list (pre-transform): %s" % system_details)
 
-        # enrich with candlepin uuid if available
-        map(lambda details : details.update({'candlepin_uuid' : client.get_candlepin_uuid(details['id'])}), system_details)
-        # enrich with engineering product IDs
-        map(lambda details :
-                details.update({'installed_products' : get_product_ids(details['subscribed_channels'],
-                                clone_mapping)}), system_details)
+    # enrich with candlepin uuid if available
+    map(lambda details : details.update({'candlepin_uuid' : client.get_candlepin_uuid(details['id'])}), system_details)
+    # enrich with engineering product IDs
+    map(lambda details :
+            details.update({'installed_products' : get_product_ids(details['subscribed_channels'],
+                            clone_mapping)}), system_details)
 
-        # convert the system details to candlepin consumers
-        consumers.extend(transform_to_consumers(system_details))
+    # convert the system details to candlepin consumers
+    consumers.extend(transform_to_consumers(system_details))
 
     _LOG.info("consumers (post transform): %s" % consumers)
     print "found %s systems to upload into candlepin" % len(consumers)

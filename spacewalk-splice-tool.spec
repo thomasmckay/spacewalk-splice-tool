@@ -63,7 +63,6 @@ rm -rf %{buildroot}
 %{_bindir}/spacewalk-splice-checkin
 %{python_sitelib}/spacewalk_splice_tool*
 %config(noreplace) %{_sysconfdir}/rhn/splice/checkin.conf
-%config(noreplace) %{_sysconfdir}/rhn/splice/rhic-mapping.txt
 %config(noreplace) %attr(644,root,root) /%{_sysconfdir}/cron.d/spacewalk-splice-tool.cron
 %doc LICENSE
 
