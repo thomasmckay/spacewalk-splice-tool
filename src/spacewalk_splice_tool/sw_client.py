@@ -15,7 +15,10 @@
 from datetime import datetime
 from dateutil.tz import tzutc
 import pprint
+import subprocess
 import sys
+import StringIO
+import csv
 import traceback
 import xmlrpclib
 from optparse import OptionParser
@@ -25,23 +28,19 @@ from cpin_connect import CandlepinConnection
 
 class SpacewalkClient(object):
     
-    def __init__(self, hostname, username, password, handler="/rpc/api"):
-        self.username = username
-        self.password = password
-        self.connection = xmlrpclib.Server("https://" + hostname + handler, verbose=0)
-        self.key = self.login()
+    def get_db_output(self):
+        # capture data from spacewalk
+        process = subprocess.Popen(['/usr/bin/spacewalk-report', '/root/spacewalk-splice-tool/playpen/cp-export'], stdout=subprocess.PIPE)
+        stdout, stderr = process.communicate()
 
-    def login(self):
-        """
-         login to xmlrpc server and grab authentication credentials
-        """
-        return self.connection.auth.login(self.username, self.password)
+        reader = csv.DictReader(stdout.decode('ascii').splitlines())
 
-    def logout(self):
-        """
-         log out of the xmlrpc session
-        """
-        self.connection.auth.logout(self.key)
+        #XXX: suboptimal 
+        retval = []
+        for r in reader:
+            retval.append(r)
+
+        return retval
     
     def get_active_systems(self, system_group=None):
         """
@@ -140,47 +139,7 @@ class SpacewalkClient(object):
             raise Exception("candlepin_uuid already exists on %s!"  % sid)
         self.connection.system.addNote(self.key, sid, 'candlepin_uuid', uuid)
 
-    def get_candlepin_uuid(self, sid):
-        notes = self.connection.system.listNotes(self.key, sid)
-        for note in notes:
-           if note['subject'] == 'candlepin_uuid':
-            return note['note']
-
 
 def transform_and_post_consumer(system, cpin_conn):
     cpin_conn.createConsumer(name=system['name'], facts=facts.translate_sw_facts_to_subsmgr(system), installed_products=None) 
     return system
-
-def main():
-    parser = OptionParser()
-    parser.add_option("-s", "--server", dest="server",
-        help="Name of the spacewalk server")
-    parser.add_option("-u", "--username", dest="username",
-        help="Login name to the spacewalk server")
-    parser.add_option("-p", "--password", dest="password",
-        help="Password to the spacewalk server")
-    parser.add_option("-i", "--inactive", action="store_true", dest="inactive",
-        help="Process Inactive Systems", default=False)
-
-    (options, args) = parser.parse_args()
-
-    client = SpacewalkClient(options.server, options.username, options.password)
-    if options.inactive:
-        inactive_systems = client.get_inactive_systems()
-        system_details = client.get_inactive_systems_details(inactive_systems)
-    else:
-        active_systems = client.get_active_systems()
-        system_details = client.get_active_systems_details(active_systems)
-
-
-    pprint.pprint(system_details)
-    system_facts_by_id= {}
-    cpin_conn = CandlepinConnection()
-    for system in system_details:
-        pprint.pprint(transform_and_post_consumer(system, cpin_conn))
-        #system_facts_by_id[system['id']] = facts.translate_sw_facts_to_subsmgr(system)
-    client.logout()
-    #pprint.pprint(system_facts_by_id)
-
-if __name__ == "__main__":
-    main()

@@ -21,12 +21,11 @@ def translate_sw_facts_to_subsmgr(system_details):
     @return facts dict representing subscription mamager facts data
     """
     facts = dict()
-    facts['systemid'] = system_details['id']
-    facts.update(cpu_facts(system_details['cpu_info']))
-    facts.update(network_facts(system_details['network_devices']))
+    facts['systemid'] = system_details['server_id']
+    facts.update(cpu_facts(system_details))
+    facts.update(network_facts(system_details))
     facts.update(memory_facts(system_details))
-    facts.update(guest_facts(system_details))
-    facts.update(inactive_facts(system_details))
+    #facts.update(guest_facts(system_details))
     return facts
 
 
@@ -35,36 +34,41 @@ def cpu_facts(cpuinfo):
     Translate the cpu facts from spacewalk server to subscription mgr format
     """
     cpu_socket_count = 0
-    if cpuinfo.has_key("socket_count"):
-        cpu_socket_count = cpuinfo['socket_count']
+    if cpuinfo.has_key("sockets"):
+        cpu_socket_count = cpuinfo['sockets']
+
+    cpu_count = 0
+    if cpuinfo.has_key("hardware"):
+        cpu_count = cpuinfo['hardware'].split(';')[0].split()[0]
 
     cpu_facts_dict = dict()
+
     # rules.js depends on uname.machine, not lscpu
-    cpu_facts_dict['uname.machine'] = cpuinfo['arch']
-    cpu_facts_dict['lscpu.l1d_cache'] = cpuinfo['cache']
-    cpu_facts_dict['lscpu.architecture'] = cpuinfo['arch']
-    cpu_facts_dict['lscpu.stepping'] = cpuinfo['stepping']
-    cpu_facts_dict['lscpu.cpu_mhz'] = cpuinfo['mhz']
-    cpu_facts_dict['lscpu.vendor_id'] = cpuinfo['vendor']
-    cpu_facts_dict['lscpu.cpu(s)'] = cpuinfo['count']
-    cpu_facts_dict['cpu.cpu(s)'] = cpuinfo['count']
-    cpu_facts_dict['lscpu.model'] = cpuinfo['model']
+    cpu_facts_dict['uname.machine'] = cpuinfo['architecture']
+    cpu_facts_dict['lscpu.l1d_cache'] = ""
+    cpu_facts_dict['lscpu.architecture'] = cpuinfo['architecture']
+    cpu_facts_dict['lscpu.stepping'] = ""
+    cpu_facts_dict['lscpu.cpu_mhz'] = ""
+    cpu_facts_dict['lscpu.vendor_id'] = ""
+    cpu_facts_dict['lscpu.cpu(s)'] = cpu_count
+    cpu_facts_dict['cpu.cpu(s)'] = cpu_count
+    cpu_facts_dict['lscpu.model'] = ""
     cpu_facts_dict['lscpu.on-line_cpu(s)_list'] = ""
     cpu_facts_dict['lscpu.byte_order'] = ""
     cpu_facts_dict['lscpu.cpu_socket(s)'] = cpu_socket_count
-    cpu_facts_dict['lscpu.core(s)_per_socket'] = 1
+    #cpu_facts_dict['lscpu.core(s)_per_socket'] = ""
     cpu_facts_dict['lscpu.hypervisor_vendor'] = ""
-    cpu_facts_dict['lscpu.numa_node0_cpu(s)'] = ""
+    #cpu_facts_dict['lscpu.numa_node0_cpu(s)'] = ""
     cpu_facts_dict['lscpu.bogomips'] = ""
-    cpu_facts_dict['cpu.core(s)_per_socket'] = ""
+    #cpu_facts_dict['cpu.core(s)_per_socket'] = ""
     cpu_facts_dict['cpu.cpu_socket(s)'] = cpu_socket_count
     cpu_facts_dict['lscpu.virtualization_type'] = ""
     cpu_facts_dict['lscpu.cpu_family'] = ""
-    cpu_facts_dict['lscpu.numa_node(s)'] = ""
+    #cpu_facts_dict['lscpu.numa_node(s)'] = ""
     cpu_facts_dict['lscpu.l1i_cache'] = ""
     cpu_facts_dict['lscpu.l2_cache'] = ""
     cpu_facts_dict['lscpu.l3_cache'] = ""
-    cpu_facts_dict['lscpu.thread(s)_per_core'] = ""
+    #cpu_facts_dict['lscpu.thread(s)_per_core'] = ""
     cpu_facts_dict['lscpu.cpu_op-mode(s)'] = ""
     return cpu_facts_dict
 
@@ -74,8 +78,7 @@ def memory_facts(meminfo):
     Translate memory info
     """
     mem_facts_dict = dict()
-    mem_facts_dict['memory_dot_memtotal'] = meminfo['ram'] * 1024
-    mem_facts_dict['memory_dot_swaptotal'] = meminfo['swap'] * 1024
+    mem_facts_dict['memory.memtotal'] = int(meminfo['memory']) * 1024
     return mem_facts_dict
 
 
@@ -85,23 +88,15 @@ def network_facts(nwkinfo):
     """
     nwk_facts_dict = dict()
     nwk_info_by_interface = {}
-    for nwk in nwkinfo:
-        nwk_info_by_interface[nwk['interface']] = nwk
 
-    nwk_facts_dict['net_dot_interface_dot_lo_dot_mac_address'] = nwk_info_by_interface['lo']['hardware_address']
-    nwk_facts_dict['net_dot_interface_dot_lo_dot_ipv4_broadcast'] = nwk_info_by_interface['lo']['broadcast']
-    nwk_facts_dict['net_dot_interface_dot_lo_dot_ipv4_address'] = nwk_info_by_interface['lo']['ip']
-    #nwk_facts_dict['net_dot_interface_dot_lo_dot_ipv6_address_dot_host'] = nwk_info_by_interface['lo']['ipv6'][0]['address']
-    nwk_facts_dict['net_dot_interface_dot_lo_dot_ipv4_netmask'] = nwk_info_by_interface['lo']['netmask']
-    #nwk_facts_dict['net_dot_interface_dot_lo_dot_ipv6_netmask_dot_host'] = nwk_info_by_interface['lo']['ipv6'][0]['netmask']
-
-    nwk_facts_dict['net_dot_interface_dot_eth0_dot_mac_address'] = nwk_info_by_interface['eth0']['hardware_address']
-    nwk_facts_dict["net_dot_interface_dot_eth0_dot_ipv4_netmask"] = nwk_info_by_interface['eth0']['netmask']
-    #nwk_facts_dict['net_dot_interface_dot_eth0_dot_ipv6_address_dot_host'] = nwk_info_by_interface['eth0']['ipv6'][0]['address']
-    #nwk_facts_dict['net_dot_interface_dot_eth0_dot_ipv6_netmask_dot_link'] = nwk_info_by_interface['eth0']['ipv6'][0]['netmask']
-    nwk_facts_dict['net_dot_interface_dot_eth0_dot_ipv4_address'] = nwk_info_by_interface['eth0']['ip']
-    nwk_facts_dict['net_dot_interface_dot_lo_dot_ipv4_broadcast'] = nwk_info_by_interface['eth0']['broadcast']
-    nwk_facts_dict['net_dot_ipv4_address'] = nwk_info_by_interface['eth0']['ip']
+    network_info = nwkinfo['hardware'].split(';')[1:]
+    for n in network_info:
+        (iface, addrmask, hwaddr) = n.split()
+        nwk_facts_dict['net.interface.' + iface + '.mac_address'] = hwaddr
+        nwk_facts_dict['net.interface.' + iface + '.ipv4_address'] = addrmask.split('/')[0]
+        nwk_facts_dict['net.interface.' + iface + '.netmask'] = addrmask.split('/')[1]
+        
+    nwk_facts_dict['net.ipv4_address'] =  nwkinfo['ip_address']
 
     return nwk_facts_dict
 

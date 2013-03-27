@@ -25,8 +25,8 @@ class CandlepinConnection():
                     host="localhost", ssl_port=8443,
                     handler="/candlepin", insecure=True)
 
-    def createConsumer(self, name, facts, installed_products, last_checkin):
-        consumer = self.cp.registerConsumer(name=name, facts=facts, owner=self.owner, installed_products=installed_products)
+    def createConsumer(self, name, facts, installed_products, last_checkin, uuid=None):
+        consumer = self.cp.registerConsumer(name=name, facts=facts, owner=self.owner, installed_products=installed_products, uuid=uuid)
         print "created consumer with uuid %s. binding.." % consumer['uuid']
         self.cp.bind(consumer['uuid'], entitle_date=datetime.now())
         print "bind complete"
@@ -42,6 +42,13 @@ class CandlepinConnection():
             owner = self.owner
         return self.cp.getConsumers(owner)
 
+    def getConsumer(self, uuid):
+        try:
+            return self.cp.getConsumer(uuid)
+        except:
+            #TODO: only do this on a 404 from candlepin
+            return None
+
     def getConsumerFacts(self, uuid=None):
         if uuid is None:
            raise Exception("no uuid provided") 
@@ -53,9 +60,7 @@ class CandlepinConnection():
         return self.cp.getEntitlementList(uuid)
 
     def _convert_date(self, dt):
-        #convert from xmlrpclib.DateTime to datetime
-        #WARNING: this assumes UTC!!
-        retval = datetime.strptime(dt.value + 'UTC', "%Y%m%dT%H:%M:%S%Z").replace(tzinfo=GMT())
+        retval = datetime.strptime(dt, "%Y-%m-%d %H:%M:%S")
         return retval
 
 if __name__ == '__main__':

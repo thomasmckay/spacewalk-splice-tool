@@ -56,9 +56,10 @@ def get_product_ids(subscribedchannels, clone_map):
     _LOG.info("Translating subscribed channel data to product ids")
     channel_mappings = utils.read_mapping_file(constants.CHANNEL_PRODUCT_ID_MAPPING)
     product_ids = []
-    for channel in subscribedchannels:
+    for channel in subscribedchannels.split(';'):
         # grab the origin
-        origin_channel = clone_map[channel['channel_label']]
+        #origin_channel = clone_map[channel['channel_label']]
+        origin_channel = channel
         if origin_channel in channel_mappings:
             cert = channel_mappings[origin_channel]
             product_ids.append(cert.split('-')[-1].split('.')[0])
@@ -137,12 +138,12 @@ def transform_to_consumers(system_details):
         _LOG.info("parsing detail: %s" % details)
         facts_data = facts.translate_sw_facts_to_subsmgr(details)
         consumer = dict()
-        consumer['id'] = details['candlepin_uuid']
+        consumer['id'] = details['server_id']
         consumer['facts'] = facts_data
         # TODO: don't hard code this!
         consumer['owner'] = 'admin'
         consumer['name'] = details['name']
-        consumer['last_checkin'] = details['last_checkin']
+        consumer['last_checkin'] = details['last_checkin_time']
         consumer['installed_products'] = details['installed_products']
 
         consumer_list.append(consumer)
@@ -203,6 +204,29 @@ def upload_to_rcs(data):
         _LOG.error("Error uploading MarketingProductUsage Data; Error: %s" % e)
         utils.systemExit(os.EX_DATAERR, "Error uploading; Error: %s" % e)
 
+def delete_candlepin_consumsers(sw_client):
+    """
+    Finds all consumer UUIDs in candlepin that do not exist in spacewalk, and
+    deletes from candlepin. This is to clean up any systems that were deleted in
+    spacewalk.
+    """
+    candlepin_conn = CandlepinConnection()
+
+    active_systems = get_active_systems(sw_client, key)
+    system_uuids = set()
+    for s in active_systems:
+        system_uuids.add(sw_client.getNoteUuid(sw_client, key, s['id']))
+
+    cc = CandlepinConnection()
+    consumer_uuids = set()
+    for consumer in cc.cp.getConsumers():
+        consumer_uuids.add(consumer['uuid'])
+
+    print "records in candlepin but not spacewalk: %s" % (consumer_uuids - system_uuids)
+
+    for c in (consumer_uuids - system_uuids):
+        print "removing %s" % c
+        cc.cp.unregisterConsumer(c)
 
 def upload_to_candlepin(consumers, sw_client):
     """
@@ -211,7 +235,7 @@ def upload_to_candlepin(consumers, sw_client):
     candlepin_conn = CandlepinConnection()
 
     for consumer in consumers:
-        if consumer.get('id', None):
+        if candlepin_conn.getConsumer(consumer['id']):
             candlepin_conn.updateConsumer(uuid=consumer['id'],
                                           facts=consumer['facts'],
                                           installed_products=consumer['installed_products'],
@@ -221,9 +245,8 @@ def upload_to_candlepin(consumers, sw_client):
             uuid = candlepin_conn.createConsumer(name=consumer['name'],
                                                 facts=consumer['facts'],
                                                 installed_products=consumer['installed_products'],
-                                                last_checkin=consumer['last_checkin'])
-            sw_client.set_candlepin_uuid(consumer['facts']['systemid'], uuid)
-            
+                                                last_checkin=consumer['last_checkin'],
+                                                uuid=consumer['id'])
 
 def get_checkin_config():
     return {
@@ -246,47 +269,23 @@ def build_rcs_data(mkt_usage):
 
 def main():
     # performs the data capture, translation and checkin to candlepin
-    parser = OptionParser()
-    parser.add_option("-s", "--server", dest="server", default=None,
-        help="Name of the spacewalk server")
-    parser.add_option("-u", "--username", dest="username", default=None,
-        help="Login name to the spacewalk server")
-    parser.add_option("-p", "--password", dest="password", default=None,
-        help="Password to the spacewalk server")
-
-    (options, args) = parser.parse_args()
-    hostname = options.server or CONFIG.get("satellite", "hostname")
-    username = options.username or CONFIG.get("satellite", "username")
-    password = options.password or CONFIG.get("satellite", "password")
-    client = SpacewalkClient(hostname, username=username, password=password)
-    _LOG.info("Established connection with server %s" % hostname)
+    client = SpacewalkClient()
     start_time = time.time()
     consumers = []
     # build the clone mapping
-    clone_mapping = {}
-    for label in client.get_channel_list():
-        clone_mapping[label] = client.get_clone_origin_channel(label)
-    _LOG.info("clone map: %s" % clone_mapping)
-    _LOG.info("Started capturing system data from spacewalk server and transforming to candlepin model")
+    _LOG.info("Started capturing system data from spacewalk database and transforming to candlepin model")
     print "retrieving data from spacewalk..."
-    # get list of active systems per system group
-    active_systems = client.get_active_systems()
-    system_details = client.get_active_systems_details(active_systems)
-    inactive_systems = client.get_inactive_systems()
-    inactive_system_details = client.get_inactive_systems_details(inactive_systems)
-    system_details.extend(inactive_system_details)
+    system_details = client.get_db_output()
     _LOG.info("full detail list (pre-transform): %s" % system_details)
 
-    # enrich with candlepin uuid if available
-    map(lambda details : details.update({'candlepin_uuid' : client.get_candlepin_uuid(details['id'])}), system_details)
     # enrich with engineering product IDs
+    clone_mapping = []
     map(lambda details :
-            details.update({'installed_products' : get_product_ids(details['subscribed_channels'],
+            details.update({'installed_products' : get_product_ids(details['software_channel'],
                             clone_mapping)}), system_details)
 
     # convert the system details to candlepin consumers
     consumers.extend(transform_to_consumers(system_details))
-
     _LOG.info("consumers (post transform): %s" % consumers)
     print "found %s systems to upload into candlepin" % len(consumers)
     print "uploading to candlepin..."
@@ -303,6 +302,11 @@ def main():
     map(lambda rmu : rmu.update({'product_info' : transform_entitlements_to_rcs(get_candlepin_entitlements(rmu['instance_identifier']))}), rcs_mkt_usage)
     
     upload_to_rcs(build_rcs_data(rcs_mkt_usage))
+
+
+    # find any systems in candlepin that need to be deleted
+
+
     finish_time = time.time() - start_time
 
 if __name__ == "__main__":
