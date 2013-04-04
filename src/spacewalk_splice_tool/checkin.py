@@ -17,7 +17,6 @@ import os
 import re
 import sys
 import logging
-import logging.config
 
 from spacewalk_splice_tool import facts, connect, utils, constants
 from spacewalk_splice_tool.sw_client import SpacewalkClient
@@ -32,22 +31,11 @@ if _LIBPATH not in sys.path:
     sys.path.append(_LIBPATH)
 
 from subscription_manager.certdirectory import CertificateDirectory
-
 from splice.common.connect import BaseConnection
 
+_LOG = logging.getLogger(__name__)
 CONFIG = utils.cfg_init(config_file=constants.SPLICE_CHECKIN_CONFIG)
 
-def init_logging():
-    log_config = CONFIG.get("logging", "config")
-    if log_config:
-        try:
-            logging.config.fileConfig(log_config)
-        except Exception, e:
-            print e
-            print "Unable to initialize logging config with: %s" % log_config
-
-init_logging()
-_LOG = logging.getLogger(__name__)
 
 def get_product_ids(subscribedchannels, clone_map):
     """
