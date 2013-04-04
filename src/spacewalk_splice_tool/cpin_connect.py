@@ -1,6 +1,6 @@
 #!/usr/bin/python
 import sys
-from rhsm.connection import UEPConnection
+from rhsm.connection import UEPConnection, RestlibException
 from datetime import datetime, timedelta
 _LIBPATH = "/usr/share/rhsm"
 # add to the path if need be
@@ -20,26 +20,34 @@ class CandlepinConnection():
 
     def __init__(self):
         self.conn_username = "admin"
-        self.owner = "admin"
         self.cp = UEPConnection(username=self.conn_username, password="admin",
                     host="localhost", ssl_port=8443,
                     handler="/candlepin", insecure=True)
 
-    def createConsumer(self, name, facts, installed_products, last_checkin, uuid=None):
-        consumer = self.cp.registerConsumer(name=name, facts=facts, owner=self.owner, installed_products=installed_products, uuid=uuid)
+
+    def createOwner(self, key, name):
+        try:
+            return self.cp.createOwner(key, name)
+        except RestlibException, e:
+            # we should check for a 400 here, once candlepin sends 400s back for creating an existing owner
+            pass
+
+    def createConsumer(self, name, facts, installed_products, last_checkin, uuid=None, owner=None):
+        consumer = self.cp.registerConsumer(name=name, facts=facts, owner=owner, installed_products=installed_products, uuid=uuid)
         print "created consumer with uuid %s. binding.." % consumer['uuid']
         self.cp.bind(consumer['uuid'], entitle_date=datetime.now())
         print "bind complete"
         self.cp.checkin(consumer['uuid'], self._convert_date(last_checkin))
         return consumer['uuid']
 
-    def updateConsumer(self, uuid, facts, installed_products, last_checkin):
+    def updateConsumer(self, uuid, facts, installed_products, last_checkin, owner=None):
+        # XXX: need to support altering owner of existing consumer
         self.cp.updateConsumer(uuid, facts=facts, installed_products=installed_products)
         self.cp.checkin(uuid, self._convert_date(last_checkin))
 
     def getConsumers(self, owner=None):
         if owner is None:
-            owner = self.owner
+            owner = 'admin'
         return self.cp.getConsumers(owner)
 
     def getConsumer(self, uuid):

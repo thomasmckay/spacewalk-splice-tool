@@ -53,7 +53,6 @@ def get_product_ids(subscribedchannels, clone_map):
     """
     For the subscribed base and child channels look up product ids
     """
-    _LOG.info("Translating subscribed channel data to product ids")
     channel_mappings = utils.read_mapping_file(constants.CHANNEL_PRODUCT_ID_MAPPING)
     product_ids = []
     for channel in subscribedchannels.split(';'):
@@ -117,6 +116,7 @@ def transform_to_rcs(consumer):
     retval = {}
     retval['splice_server'] = _get_splice_server_uuid()
     retval['date'] = consumer['lastCheckin']
+    retval['organization'] = consumer['owner']
     # these two fields are populated by rcs
     retval['created'] = ""
     retval['updated'] = ""
@@ -132,16 +132,13 @@ def transform_to_consumers(system_details):
     into candlepin.
     """
     _LOG.info("Translating system details to candlepin consumers")
-    _LOG.info("full detail list: %s" % system_details)
     consumer_list = []
     for details in system_details:
-        _LOG.info("parsing detail: %s" % details)
         facts_data = facts.translate_sw_facts_to_subsmgr(details)
         consumer = dict()
         consumer['id'] = details['server_id']
         consumer['facts'] = facts_data
-        # TODO: don't hard code this!
-        consumer['owner'] = 'admin'
+        consumer['owner'] = details['org_id']
         consumer['name'] = details['name']
         consumer['last_checkin'] = details['last_checkin_time']
         consumer['installed_products'] = details['installed_products']
@@ -163,7 +160,6 @@ def build_server_metadata(cfg):
     server_metadata['created'] = datetime.now(tzutc()).isoformat()
     server_metadata['updated'] = server_metadata['created']
     # wrap obj for consumption by upstream rcs
-    _LOG.info("Built follow for server metadata '%s'" % (server_metadata))
     return {"objects": [server_metadata]}
 
 def get_candlepin_consumers():
@@ -204,48 +200,47 @@ def upload_to_rcs(data):
         _LOG.error("Error uploading MarketingProductUsage Data; Error: %s" % e)
         utils.systemExit(os.EX_DATAERR, "Error uploading; Error: %s" % e)
 
-def delete_candlepin_consumsers(sw_client):
+def delete_stale_owners(sw_client, cpin_client, orgs):
     """
-    Finds all consumer UUIDs in candlepin that do not exist in spacewalk, and
-    deletes from candlepin. This is to clean up any systems that were deleted in
-    spacewalk.
+    finds all owners in candlepin, and removes any that are not also in spacewalk
     """
-    candlepin_conn = CandlepinConnection()
 
-    active_systems = get_active_systems(sw_client, key)
-    system_uuids = set()
-    for s in active_systems:
-        system_uuids.add(sw_client.getNoteUuid(sw_client, key, s['id']))
+    owners = cpin_client.cp.getOwners()
+    org_ids = orgs.keys()
 
-    cc = CandlepinConnection()
-    consumer_uuids = set()
-    for consumer in cc.cp.getConsumers():
-        consumer_uuids.add(consumer['uuid'])
+    for owner in owners:
+        if owner['key'] == 'admin':
+            continue
+        if str(owner['key']) not in  org_ids:
+            _LOG.info("removing owner %s, owner is no longer in spacewalk" % owner['key'])
+            cpin_client.cp.deleteOwner(owner['key']) 
 
-    print "records in candlepin but not spacewalk: %s" % (consumer_uuids - system_uuids)
+def create_owners(orgs, cpin_client):
+    for org_id in orgs.iterkeys():
+        # don't bother checking if the org exists before creating,
+        # just create and let it fail if it already exists
+        cpin_client.createOwner(org_id, orgs[org_id])
 
-    for c in (consumer_uuids - system_uuids):
-        print "removing %s" % c
-        cc.cp.unregisterConsumer(c)
 
-def upload_to_candlepin(consumers, sw_client):
+def upload_to_candlepin(consumers, sw_client, cpin_client):
     """
     Uploads consumer data to candlepin
     """
-    candlepin_conn = CandlepinConnection()
 
     for consumer in consumers:
-        if candlepin_conn.getConsumer(consumer['id']):
-            candlepin_conn.updateConsumer(uuid=consumer['id'],
+        if cpin_client.getConsumer(consumer['id']):
+            cpin_client.updateConsumer(uuid=consumer['id'],
                                           facts=consumer['facts'],
                                           installed_products=consumer['installed_products'],
+                                          owner=consumer['owner'],
                                           last_checkin=consumer['last_checkin'])
         else:
             # if we don't have a candlepin ID for this system, treat as a new system
-            uuid = candlepin_conn.createConsumer(name=consumer['name'],
+            uuid = cpin_client.createConsumer(name=consumer['name'],
                                                 facts=consumer['facts'],
                                                 installed_products=consumer['installed_products'],
                                                 last_checkin=consumer['last_checkin'],
+                                                owner=consumer['owner'],
                                                 uuid=consumer['id'])
 
 def get_checkin_config():
@@ -270,14 +265,21 @@ def build_rcs_data(mkt_usage):
 def main():
     # performs the data capture, translation and checkin to candlepin
     client = SpacewalkClient()
+    cpin_client = CandlepinConnection()
     start_time = time.time()
     consumers = []
+
+
+    org_list = client.get_org_list()
+    delete_stale_owners(client, cpin_client, org_list)
+
+    create_owners(org_list, cpin_client)
+
     # build the clone mapping
     _LOG.info("Started capturing system data from spacewalk database and transforming to candlepin model")
-    print "retrieving data from spacewalk..."
-    system_details = client.get_db_output()
-    _LOG.info("full detail list (pre-transform): %s" % system_details)
-
+    _LOG.info("retrieving data from spacewalk")
+    system_details = client.get_system_list()
+    _LOG.info("enriching %s spacewalk records" % len(system_details))
     # enrich with engineering product IDs
     clone_mapping = []
     map(lambda details :
@@ -286,13 +288,13 @@ def main():
 
     # convert the system details to candlepin consumers
     consumers.extend(transform_to_consumers(system_details))
-    _LOG.info("consumers (post transform): %s" % consumers)
-    print "found %s systems to upload into candlepin" % len(consumers)
-    print "uploading to candlepin..."
-    upload_to_candlepin(consumers, client)
-    print "done"
+    _LOG.info("found %s systems to upload into candlepin" % len(consumers))
+    _LOG.info("uploading to candlepin...")
+    upload_to_candlepin(consumers, client, cpin_client)
+    _LOG.info("upload completed, downloading consumers from candlepin")
     # now pull put out of candlepin, and into rcs!
     cpin_consumers = get_candlepin_consumers()
+    _LOG.info("creating marketingproductusage objects")
 
     # create the base marketing usage list
     rcs_mkt_usage = map(transform_to_rcs, cpin_consumers)
@@ -301,12 +303,11 @@ def main():
     # enrich with product usage info
     map(lambda rmu : rmu.update({'product_info' : transform_entitlements_to_rcs(get_candlepin_entitlements(rmu['instance_identifier']))}), rcs_mkt_usage)
     
+    _LOG.info("uploading to RCS")
     upload_to_rcs(build_rcs_data(rcs_mkt_usage))
-
+    _LOG.info("run complete")
 
     # find any systems in candlepin that need to be deleted
-
-
     finish_time = time.time() - start_time
 
 if __name__ == "__main__":

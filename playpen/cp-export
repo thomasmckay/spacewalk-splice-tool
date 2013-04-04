@@ -12,6 +12,7 @@ columns:
 
     server_id:i         System identifier
     organization        Organization
+    org_id              Organization ID
     name                System Name
     hostname            Hostname, as reported by the system
     ip_address          IPv4 address, as reported by the system
@@ -38,13 +39,14 @@ multival_columns:
 
 sql:
 
-    select server_id, organization, name, hostname, ip_address, ipv6_address, registered_by,
+    select server_id, organization, org_id, name, hostname, ip_address, ipv6_address, registered_by,
         registration_time, last_checkin_time,
         software_channel,
         entitlements, system_group, virtual_host, architecture, hardware, memory, sockets
     from (
     select rhnserver.id as server_id,
         rhnserver.name as name,
+        rhnserver.org_id as org_id,
         rhnservernetwork.hostname, trim(rhnservernetwork.ipaddr) as ip_address,
         trim(rhnservernetwork.ip6addr) as ipv6_address,
         ( select login from web_contact where rhnserver.creator_id = web_contact.id ) as registered_by,
