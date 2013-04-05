@@ -46,9 +46,12 @@ class CandlepinConnection():
         self.cp.checkin(uuid, self._convert_date(last_checkin))
 
     def getConsumers(self, owner=None):
-        if owner is None:
-            owner = 'admin'
         return self.cp.getConsumers(owner)
+
+    def unregisterConsumers(self, consumer_id_list):
+        # we might change to to a bulk delete later
+        for consumer_id in consumer_id_list:
+            self.cp.unregisterConsumer(consumer_id)
 
     def getConsumer(self, uuid):
         try:

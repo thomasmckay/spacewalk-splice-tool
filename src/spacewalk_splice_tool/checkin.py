@@ -203,6 +203,26 @@ def delete_stale_owners(sw_client, cpin_client, orgs):
             _LOG.info("removing owner %s, owner is no longer in spacewalk" % owner['key'])
             cpin_client.cp.deleteOwner(owner['key']) 
 
+def delete_stale_consumers(sw_client, cpin_client, consumer_list, system_list):
+    """
+    removes consumers that are in candlepin and not spacewalk. This is to clean
+    up any systems that were deleted in spacewalk.
+    """
+
+    system_id_set = set()
+    for system in system_list:
+        system_id_set.add(system['server_id'])
+   
+    consumer_id_set = set()
+    for consumer in consumer_list:
+        consumer_id_set.add(consumer['uuid'])
+
+    
+    consumers_to_remove = list(consumer_id_set - system_id_set)
+    _LOG.info("removing %s consumers that are no longer in spacewalk" % len(consumers_to_remove))
+    cpin_client.unregisterConsumers(consumers_to_remove)
+        
+
 def create_owners(orgs, cpin_client):
     for org_id in orgs.iterkeys():
         # don't bother checking if the org exists before creating,
@@ -258,15 +278,19 @@ def main():
     consumers = []
 
 
+    _LOG.info("Started capturing system data from spacewalk database and transforming to candlepin model")
+    _LOG.info("retrieving data from spacewalk")
+    system_details = client.get_system_list()
     org_list = client.get_org_list()
+
     delete_stale_owners(client, cpin_client, org_list)
+
+    cpin_consumer_list = cpin_client.getConsumers()
+    delete_stale_consumers(client, cpin_client, cpin_consumer_list, system_details)
 
     create_owners(org_list, cpin_client)
 
     # build the clone mapping
-    _LOG.info("Started capturing system data from spacewalk database and transforming to candlepin model")
-    _LOG.info("retrieving data from spacewalk")
-    system_details = client.get_system_list()
     _LOG.info("enriching %s spacewalk records" % len(system_details))
     # enrich with engineering product IDs
     clone_mapping = []
