@@ -13,12 +13,13 @@ BuildRequires:  python-setuptools
 BuildRequires:  python2-devel
 
 Requires: python-certutils
+Requires: spacewalk-reports
 Requires: subscription-manager-migration-data
 Requires: splice-common >= 0.77
 Requires: /usr/sbin/crond
 
 %description
-A tool for gathering active system checkin data from spacewalk server and report to Splice server
+A tool for gathering system checkin data from spacewalk server and report to Splice server
 
 %prep
 %setup -q
@@ -38,6 +39,7 @@ mkdir -p %{buildroot}/%{_sysconfdir}/rhn/splice/
 mkdir -p %{buildroot}/%{_bindir}
 mkdir -p %{buildroot}/%{_var}/log/%{name}
 mkdir -p %{buildroot}/%{_sysconfdir}/cron.d
+mkdir -p %{buildroot}/%{_datadir}/spacewalk/reports/data/
 
 # Configuration
 cp -R etc/rhn/splice/* %{buildroot}/%{_sysconfdir}/rhn/splice/
@@ -45,6 +47,7 @@ cp scripts/spacewalk-splice-tool.cron %{buildroot}/%{_sysconfdir}/cron.d/
 
 # Tools
 cp bin/* %{buildroot}/%{_bindir}/
+cp scripts/cp-export %{buildroot}/%{_datadir}/spacewalk/reports/data/
 
 # Remove egg info
 rm -rf %{buildroot}/%{python_sitelib}/*.egg-info
@@ -64,6 +67,7 @@ rm -rf %{buildroot}
 %{python_sitelib}/spacewalk_splice_tool*
 %config(noreplace) %{_sysconfdir}/rhn/splice/checkin.conf
 %config(noreplace) %attr(644,root,root) /%{_sysconfdir}/cron.d/spacewalk-splice-tool.cron
+%attr(644,root,root) %{_datadir}/spacewalk/reports/data/cp-export
 %doc LICENSE
 
 %changelog
