@@ -20,7 +20,7 @@ import logging
 
 from spacewalk_splice_tool import facts, connect, utils, constants
 from spacewalk_splice_tool.sw_client import SpacewalkClient
-from spacewalk_splice_tool.cpin_connect import CandlepinConnection
+from spacewalk_splice_tool.cpin_connect import CandlepinConnection, NotFoundException
 from certutils import certutils
 from datetime import datetime
 from dateutil.tz import tzutc
@@ -160,7 +160,7 @@ def get_candlepin_entitlements(uuid):
 
 def get_candlepin_consumer_facts(uuid):
     candlepin_conn = CandlepinConnection()
-    return candlepin_conn.getConsumerFacts(uuid)
+    return candlepin_conn.getConsumer(uuid)['facts']
 
 def upload_to_rcs(data):
     try:
@@ -188,20 +188,33 @@ def upload_to_rcs(data):
         _LOG.error("Error uploading MarketingProductUsage Data; Error: %s" % e)
         utils.systemExit(os.EX_DATAERR, "Error uploading; Error: %s" % e)
 
-def delete_stale_owners(sw_client, cpin_client, orgs):
+def update_owners(sw_client, cpin_client, orgs):
     """
-    finds all owners in candlepin, and removes any that are not also in spacewalk
+    ensure that the candlepin owner set matches what's in spacewalk
     """
 
-    owners = cpin_client.cp.getOwners()
+    owners = cpin_client.getOwners()
     org_ids = orgs.keys()
+    owner_keys = map(lambda x: x['key'], owners)
+    print owner_keys
+    
 
+    # perform deletions
     for owner in owners:
         if owner['key'] == 'admin':
             continue
         if str(owner['key']) not in  org_ids:
             _LOG.info("removing owner %s, owner is no longer in spacewalk" % owner['key'])
-            cpin_client.cp.deleteOwner(owner['key']) 
+            cpin_client.deleteOwner(owner['key']) 
+
+    # pull the new owner list, perform creations
+    owners = cpin_client.getOwners()
+
+    for org_id in org_ids:
+        if org_id not in owner_keys:
+            _LOG.info("creating owner %s, owner is in spacewalk but not candlepin" % org_id)
+            cpin_client.createOwner(org_id, orgs[org_id])
+            
 
 def delete_stale_consumers(sw_client, cpin_client, consumer_list, system_list):
     """
@@ -223,26 +236,21 @@ def delete_stale_consumers(sw_client, cpin_client, consumer_list, system_list):
     cpin_client.unregisterConsumers(consumers_to_remove)
         
 
-def create_owners(orgs, cpin_client):
-    for org_id in orgs.iterkeys():
-        # don't bother checking if the org exists before creating,
-        # just create and let it fail if it already exists
-        cpin_client.createOwner(org_id, orgs[org_id])
-
-
 def upload_to_candlepin(consumers, sw_client, cpin_client):
     """
     Uploads consumer data to candlepin
     """
 
     for consumer in consumers:
-        if cpin_client.getConsumer(consumer['id']):
+        try:
+            # this get will fail if the consumer doesn't exist
+            cpin_client.getConsumer(consumer['id'])
             cpin_client.updateConsumer(uuid=consumer['id'],
                                           facts=consumer['facts'],
                                           installed_products=consumer['installed_products'],
                                           owner=consumer['owner'],
                                           last_checkin=consumer['last_checkin'])
-        else:
+        except NotFoundException:
             # if we don't have a candlepin ID for this system, treat as a new system
             uuid = cpin_client.createConsumer(name=consumer['name'],
                                                 facts=consumer['facts'],
@@ -283,12 +291,11 @@ def main():
     system_details = client.get_system_list()
     org_list = client.get_org_list()
 
-    delete_stale_owners(client, cpin_client, org_list)
+    update_owners(client, cpin_client, org_list)
 
     cpin_consumer_list = cpin_client.getConsumers()
     delete_stale_consumers(client, cpin_client, cpin_consumer_list, system_details)
 
-    create_owners(org_list, cpin_client)
 
     # build the clone mapping
     _LOG.info("enriching %s spacewalk records" % len(system_details))
