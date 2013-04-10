@@ -101,10 +101,13 @@ def transform_to_rcs(consumer):
     convert a candlepin consumer into something parsable by RCS
     as a MarketingProductUsage obj
     """
+
     retval = {}
     retval['splice_server'] = _get_splice_server_uuid()
     retval['date'] = consumer['lastCheckin']
     retval['organization'] = consumer['owner']
+    retval['name'] = consumer['name']
+    retval['service_level'] = consumer['serviceLevel']
     # these two fields are populated by rcs
     retval['created'] = ""
     retval['updated'] = ""
@@ -196,7 +199,6 @@ def update_owners(sw_client, cpin_client, orgs):
     owners = cpin_client.getOwners()
     org_ids = orgs.keys()
     owner_keys = map(lambda x: x['key'], owners)
-    print owner_keys
     
 
     # perform deletions
@@ -243,7 +245,7 @@ def upload_to_candlepin(consumers, sw_client, cpin_client):
 
     for consumer in consumers:
         try:
-            # this get will fail if the consumer doesn't exist
+            # the first call will fail if the consumer doesn't exist, and send us to the except block
             cpin_client.getConsumer(consumer['id'])
             cpin_client.updateConsumer(uuid=consumer['id'],
                                           facts=consumer['facts'],

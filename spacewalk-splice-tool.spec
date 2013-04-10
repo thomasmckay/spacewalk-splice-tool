@@ -13,6 +13,7 @@ BuildRequires:  python-setuptools
 BuildRequires:  python2-devel
 
 Requires: python-certutils
+Requires: python-oauth2
 Requires: spacewalk-reports
 Requires: subscription-manager-migration-data
 Requires: splice-common >= 0.77

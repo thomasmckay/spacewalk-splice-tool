@@ -1,6 +1,7 @@
 #!/usr/bin/python
 import sys
 import urllib
+import urlparse
 from rhsm.connection import UEPConnection, RestlibException
 from datetime import datetime, timedelta
 _LIBPATH = "/usr/share/rhsm"
@@ -13,9 +14,12 @@ from subscription_manager.certdirectory import CertificateDirectory
 from rhsm.certificate import GMT
 import oauth2 as oauth
 import httplib
+import logging
 import json
+from spacewalk_splice_tool import utils, constants
 
-logutil.init_logger()
+_LOG = logging.getLogger(__name__)
+CONFIG = utils.cfg_init(config_file=constants.SPLICE_CHECKIN_CONFIG)
 
 class NotFoundException():
     pass
@@ -23,12 +27,14 @@ class NotFoundException():
 class CandlepinConnection():
 
     def __init__(self):
-        CONSUMER_KEY = 'sst'
-        CONSUMER_SECRET = 'sstsstsst'
+        CONSUMER_KEY = CONFIG.get("candlepin", "oauth_key")
+        CONSUMER_SECRET = CONFIG.get("candlepin", "oauth_secret")
         # NOTE: callers must add leading slash when appending
-        self.url = "https://ec2-23-22-20-237.compute-1.amazonaws.com:8443/candlepin"
+        self.url = CONFIG.get("candlepin", "url")
         # Setup a standard HTTPSConnection object
-        self.connection = httplib.HTTPSConnection("ec2-23-22-20-237.compute-1.amazonaws.com", "8443")
+        parsed_url = urlparse.urlparse(self.url)
+        (hostname, port) = parsed_url[1].split(':')
+        self.connection = httplib.HTTPSConnection(hostname, port)
         # Create an OAuth Consumer object 
         self.consumer = oauth.Consumer(CONSUMER_KEY, CONSUMER_SECRET)
 
@@ -84,6 +90,7 @@ class CandlepinConnection():
         if checkin_date:
             method = "%s?checkin_date=%s" % (method,
                     self._sanitize(checkin_date.isoformat(), plus=True))
+        return self._request(method, 'PUT')
 
     def createConsumer(self, name, facts, installed_products, last_checkin, uuid=None, owner=None):
         info = {"type": 'system',
@@ -104,7 +111,6 @@ class CandlepinConnection():
         # create the consumer
         consumer = self._request(url, 'POST', info)
 
-        print consumer
 
         # now do a bind
         url = "/consumers/%s/entitlements" % consumer['uuid']
@@ -153,7 +159,6 @@ class CandlepinConnection():
     def removeDeletionRecord(self, consumer_id):
         url = '/consumers/%s/deletionrecord'
         self._request(url % consumer_id, 'DELETE')
-    
 
     def getConsumer(self, uuid):
         url = "/consumers/%s" % self._sanitize(uuid)
