@@ -1,6 +1,6 @@
 # spacewalk-splice-tool package
 Name:           spacewalk-splice-tool
-Version:        0.8
+Version:        0.9
 Release:        1%{?dist}
 Summary:        A tool for gathering active system checkin data from spacewalk server and report to Splice server
 
@@ -71,6 +71,26 @@ rm -rf %{buildroot}
 %doc LICENSE
 
 %changelog
+* Thu Apr 11 2013 John Matthews <jwmatthews@gmail.com> 0.9-1
+- Upload Pool/Product/Rules data to splice.common.api during 'checkin' run
+  (jwmatthews@gmail.com)
+- use oauth instead of username/pass (cduryee@redhat.com)
+- spec updates (cduryee@redhat.com)
+- delete systems from candlepin that were deleted in spacewalk
+  (cduryee@redhat.com)
+- do not allow two instances of sst to run at once (cduryee@redhat.com)
+- use org ID instead of org name, and clean up logging statements
+  (cduryee@redhat.com)
+- Read data out of spacewalk DB instead of using APIs (cduryee@redhat.com)
+- Use all systems in spacewalk, do not perform group to rhic mapping
+  (cduryee@redhat.com)
+- add entitlementStatus to MPU (cduryee@redhat.com)
+- use qty of the entitlement, not the pool (cduryee@redhat.com)
+- send candlepin data to rcs (cduryee@redhat.com)
+- set facts in a way that candlepin expects (cduryee@redhat.com)
+- candlepin support (cduryee@redhat.com)
+- candlepin support (cduryee@redhat.com)
+
 * Fri Feb 01 2013 John Matthews <jwmatthews@gmail.com> 0.8-1
 - Change default num sockets to 0 if no data is available
   (jwmatthews@gmail.com)
