@@ -162,7 +162,7 @@ def get_candlepin_consumer_facts(uuid):
     candlepin_conn = CandlepinConnection()
     return candlepin_conn.getConsumer(uuid)['facts']
 
-def upload_to_rcs(data):
+def upload_to_rcs(rules_data, pool_data, product_data, mpu_data):
     try:
         cfg = get_checkin_config()
         splice_conn = BaseConnection(cfg["host"], cfg["port"], cfg["handler"],
@@ -176,13 +176,39 @@ def upload_to_rcs(data):
         if status != 204:
             _LOG.error("Splice server metadata was not uploaded correctly")
             utils.systemExit(os.EX_DATAERR, "Error uploading splice server data")
+
         # upload the data to rcs
         url = "/v1/marketingproductusage/"
-        status, body = splice_conn.POST(url, data)
+        status, body = splice_conn.POST(url, mpu_data)
         _LOG.info("POST to %s: received %s %s" % (url, status, body))
         if status != 202 and status != 204:
-            _LOG.error("ProductUsage data was not uploaded correctly")
-            utils.systemExit(os.EX_DATAERR, "Error uploading product usage data")
+            _LOG.error("MarketingProductUsage data was not uploaded correctly")
+            utils.systemExit(os.EX_DATAERR, "Error uploading marketing product usage data")
+
+        # Upload Rules
+        url = "/v1/rules/"
+        status, body = splice_conn.POST(url, rules_data)
+        _LOG.info("POST to %s: received %s %s" % (url, status, body))
+        if status != 202 and status != 204:
+            _LOG.error("Rules data was not uploaded correctly")
+            utils.systemExit(os.EX_DATAERR, "Error uploading rules data")
+        
+        # Upload Pools
+        url = "/v1/pool/"
+        status, body = splice_conn.POST(url, pool_data)
+        _LOG.info("POST to %s: received %s %s" % (url, status, body))
+        if status != 202 and status != 204:
+            _LOG.error("Pool data was not uploaded correctly")
+            utils.systemExit(os.EX_DATAERR, "Error uploading pool data")
+        
+        # Upload Products
+        url = "/v1/product/"
+        status, body = splice_conn.POST(url, product_data)
+        _LOG.info("POST to %s: received %s %s" % (url, status, body))
+        if status != 202 and status != 204:
+            _LOG.error("Products data was not uploaded correctly")
+            utils.systemExit(os.EX_DATAERR, "Error uploading products data")
+
         utils.systemExit(os.EX_OK, "Upload was successful")
     except Exception, e:
         _LOG.error("Error uploading MarketingProductUsage Data; Error: %s" % e)
@@ -272,11 +298,11 @@ def get_checkin_config():
         "splice_server_description" : CONFIG.get("splice", "splice_server_description"),
     }
 
-def build_rcs_data(mkt_usage):
+def build_rcs_data(data):
     """
-    wraps the marketing usage data in the right format for uploading
+    wraps the data in the right format for uploading
     """
-    return {"objects": mkt_usage}
+    return {"objects": data}
 
 def main():
     # performs the data capture, translation and checkin to candlepin
@@ -322,8 +348,15 @@ def main():
     # enrich with product usage info
     map(lambda rmu : rmu.update({'product_info' : transform_entitlements_to_rcs(get_candlepin_entitlements(rmu['instance_identifier']))}), rcs_mkt_usage)
     
+    rules_data = cpin_client.getRules()
+    pool_data = cpin_client.getPools()
+    product_data = cpin_client.getProducts()
+
     _LOG.info("uploading to RCS")
-    upload_to_rcs(build_rcs_data(rcs_mkt_usage))
+    upload_to_rcs(rules_data=build_rcs_data([rules_data]), 
+        pool_data=build_rcs_data(pool_data), 
+        product_data=build_rcs_data(product_data), 
+        mpu_data=build_rcs_data(rcs_mkt_usage))
     _LOG.info("run complete")
 
     # find any systems in candlepin that need to be deleted
