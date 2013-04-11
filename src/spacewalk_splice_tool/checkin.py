@@ -113,6 +113,8 @@ def transform_to_rcs(consumer):
     retval['updated'] = ""
     retval['instance_identifier'] = consumer['uuid']
     retval['entitlement_status'] = consumer['entitlementStatus']
+    retval['organization_id'] = consumer['owner']['key']
+    retval['organization_name'] = consumer['owner']['displayName']
     return retval
 
 
