@@ -1,6 +1,6 @@
 # spacewalk-splice-tool package
 Name:           spacewalk-splice-tool
-Version:        0.9
+Version:        0.10
 Release:        1%{?dist}
 Summary:        A tool for gathering active system checkin data from spacewalk server and report to Splice server
 
@@ -72,6 +72,13 @@ rm -rf %{buildroot}
 %doc LICENSE
 
 %changelog
+* Thu Apr 11 2013 John Matthews <jwmatthews@gmail.com> 0.10-1
+- Automatic commit of package [spacewalk-splice-tool] release [0.9-1].
+  (jwmatthews@gmail.com)
+- Upload Pool/Product/Rules data to splice.common.api during 'checkin' run
+  (jwmatthews@gmail.com)
+- config cleanup, and removal of some dead code (cduryee@redhat.com)
+
 * Thu Apr 11 2013 John Matthews <jwmatthews@gmail.com> 0.9-1
 - Upload Pool/Product/Rules data to splice.common.api during 'checkin' run
   (jwmatthews@gmail.com)
