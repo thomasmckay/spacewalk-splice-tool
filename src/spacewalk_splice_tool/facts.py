@@ -33,11 +33,13 @@ def cpu_facts(cpuinfo):
     """
     Translate the cpu facts from spacewalk server to subscription mgr format
     """
-    cpu_socket_count = 0
-    if cpuinfo.has_key("sockets"):
+    # we set this to 1 by default so candlepin does not remove the field from
+    # the facts list. This is needed so the fact can bubble through to RCS.
+    cpu_socket_count = 1
+    if cpuinfo.has_key("sockets") and cpuinfo['sockets'] is not "":
         cpu_socket_count = cpuinfo['sockets']
 
-    cpu_count = 0
+    cpu_count = 1
     if cpuinfo.has_key("hardware"):
         cpu_count = cpuinfo['hardware'].split(';')[0].split()[0]
 
