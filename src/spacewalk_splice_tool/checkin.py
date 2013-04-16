@@ -11,6 +11,7 @@
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 from optparse import OptionParser
+import json
 import pprint
 import time
 import os
@@ -32,6 +33,7 @@ if _LIBPATH not in sys.path:
 
 from subscription_manager.certdirectory import CertificateDirectory
 from splice.common.connect import BaseConnection
+import splice.common.utils
 
 _LOG = logging.getLogger(__name__)
 CONFIG = utils.cfg_init(config_file=constants.SPLICE_CHECKIN_CONFIG)
@@ -167,16 +169,45 @@ def get_candlepin_consumer_facts(uuid):
     candlepin_conn = CandlepinConnection()
     return candlepin_conn.getConsumer(uuid)['facts']
 
-def upload_to_rcs(rules_data, pool_data, product_data, mpu_data):
+def write_sample_json(sample_json, rules_data, pool_data, product_data, mpu_data, splice_server_data):
+    def write_file(file_name, data):
+        if not data:
+            return
+        if not os.path.exists(sample_json):
+            _LOG.info("Directory doesn't exist: %s" % (sample_json))
+            return
+        target_path = os.path.join(sample_json, file_name)
+        try:
+            _LOG.info("Will write json data to: %s" % (target_path))
+            f = open(target_path, "w")
+            try:
+                f.write(splice.common.utils.obj_to_json(data, indent = 4))
+            finally:
+                f.close()
+        except Exception, e:
+            _LOG.exception("Unable to write sample json for: %s" % (target_path))
+    write_file("sst_rules.json", rules_data)
+    write_file("sst_pool.json", pool_data)
+    write_file("sst_product.json", product_data)
+    write_file("sst_mpu.json", mpu_data)
+    write_file("sst_splice_server.json", splice_server_data)
+
+def upload_to_rcs(rules_data, pool_data, product_data, mpu_data, sample_json=None):
     try:
         cfg = get_checkin_config()
         splice_conn = BaseConnection(cfg["host"], cfg["port"], cfg["handler"],
             cert_file=cfg["cert"], key_file=cfg["key"], ca_cert=cfg["ca"])
 
+        splice_server_data = build_server_metadata(cfg)
+        if sample_json:
+            write_sample_json(sample_json=sample_json, rules_data=rules_data, 
+                pool_data=pool_data, product_data=product_data,
+                mpu_data=mpu_data, splice_server_data=splice_server_data)
+
         # upload the server metadata to rcs
         _LOG.info("sending metadata to server")
         url = "/v1/spliceserver/"
-        status, body = splice_conn.POST(url, build_server_metadata(cfg))
+        status, body = splice_conn.POST(url, splice_server_data)
         _LOG.info("POST to %s: received %s %s" % (url, status, body))
         if status != 204:
             _LOG.error("Splice server metadata was not uploaded correctly")
@@ -308,7 +339,7 @@ def build_rcs_data(data):
     """
     return {"objects": data}
 
-def main():
+def main(sample_json=None):
     # performs the data capture, translation and checkin to candlepin
     client = SpacewalkClient()
     cpin_client = CandlepinConnection()
@@ -360,11 +391,15 @@ def main():
     upload_to_rcs(rules_data=build_rcs_data([rules_data]), 
         pool_data=build_rcs_data(pool_data), 
         product_data=build_rcs_data(product_data), 
-        mpu_data=build_rcs_data(rcs_mkt_usage))
-    _LOG.info("run complete")
+        mpu_data=build_rcs_data(rcs_mkt_usage), sample_json=sample_json)
+    _LOG.info("run complete") 
 
     # find any systems in candlepin that need to be deleted
     finish_time = time.time() - start_time
 
 if __name__ == "__main__":
-    main()
+    parser = OptionParser(description="Spacewalk Splice Tool")
+    parser.add_option('--sample_json', action="store", default=None,
+        help="Specify a directory to write the json data sent to Splice, if not specified no data is written to file.")
+    (opts, args) = parser.parse_args()
+    main(sample_json=opts.sample_json)
