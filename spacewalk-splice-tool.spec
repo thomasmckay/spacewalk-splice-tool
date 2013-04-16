@@ -1,6 +1,6 @@
 # spacewalk-splice-tool package
 Name:           spacewalk-splice-tool
-Version:        0.10
+Version:        0.11
 Release:        1%{?dist}
 Summary:        A tool for gathering active system checkin data from spacewalk server and report to Splice server
 
@@ -73,6 +73,13 @@ rm -rf %{buildroot}
 %doc LICENSE
 
 %changelog
+* Tue Apr 16 2013 John Matthews <jwmatthews@gmail.com> 0.11-1
+- Added a CLI option: --sample-json if set to a path we will output the json
+  data we send to Splice as separate files (jwmatthews@gmail.com)
+- Added rhic-serve-common dep to spec file (jwmatthews@gmail.com)
+- default to one socket, instead of blank (cduryee@redhat.com)
+- populate org id and name in mpu (cduryee@redhat.com)
+
 * Thu Apr 11 2013 John Matthews <jwmatthews@gmail.com> 0.10-1
 - Automatic commit of package [spacewalk-splice-tool] release [0.9-1].
   (jwmatthews@gmail.com)
