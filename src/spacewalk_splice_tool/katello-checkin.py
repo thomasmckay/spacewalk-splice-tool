@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+#
+# ./mega-setup.py --url https://localhost:3000/katello --user admin --password admin --verbose
+#
 
 from optparse import OptionParser
 import sys
@@ -19,7 +23,7 @@ try:
     from katello.client.api.user_role import UserRoleAPI
     from katello.client.api.permission import PermissionAPI
     from katello.client.api.provider import ProviderAPI
-    from katello.client.api.distributor import DistributorAPI
+    #from katello.client.api.distributor import DistributorAPI
 except ImportError, e:
     sys.stderr.write("[Error] %s\n, 'pip-python install katello-cli' is required\n" % e)
     sys.exit(-1)
@@ -43,7 +47,7 @@ def init_api():
     permapi = PermissionAPI()
     provapi = ProviderAPI()
     envapi  = EnvironmentAPI()
-    distapi = DistributorAPI()
+    #distapi = DistributorAPI()
 
 
 def parse_server(url):
@@ -245,7 +249,17 @@ if __name__ == '__main__':
     init_server()
     init_api()
 
-    setup_orgs()
-    setup_users()
-    setup_permissions()
-    setup_mega()
+    print orgapi.organizations()
+    try:
+        orgapi.organization('Splice Org')
+        print "EXISTS"
+    except server.ServerRequestError, e:
+        if e[0] == 404:
+            print "NEED TO CREATE"
+        else:
+            raise(e)
+
+    #setup_orgs()
+    #setup_users()
+    #setup_permissions()
+    #setup_mega()
