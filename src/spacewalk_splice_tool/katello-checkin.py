@@ -1,6 +1,15 @@
 #!/usr/bin/env python
 #
-# ./mega-setup.py --url https://localhost:3000/katello --user admin --password admin --verbose
+#   % yum install python-pip
+#   % pip-python search katello
+#   % pip-python install katello-cli
+#
+#   % yum install gcc
+#   % yum install krb5-devel
+#   % yum install python-devel
+#   % pip-python install kerberos
+#
+# ./katello-checking.py --url https://localhost:3000/katello --user admin --password admin --verbose
 #
 
 from optparse import OptionParser
