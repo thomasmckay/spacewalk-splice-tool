@@ -256,13 +256,18 @@ def update_owners(sw_client, cpin_client, orgs):
     """
 
     owners = cpin_client.getOwners()
+    print "OWNERS: %s" % owners
     org_ids = orgs.keys()
-    owner_keys = map(lambda x: x['key'], owners)
-    
+    owner_keys = map(lambda x: x['id'], owners)
+
+    print "owner_keys: %s" % owner_keys
+    print "org_ids: %s" % org_ids
+   
+    return 
 
     # perform deletions
     for owner in owners:
-        if owner['key'] == 'admin':
+        if owner['key'] == 'admin' or owner['key']:
             continue
         if str(owner['key']) not in  org_ids:
             _LOG.info("removing owner %s, owner is no longer in spacewalk" % owner['key'])

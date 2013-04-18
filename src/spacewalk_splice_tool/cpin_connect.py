@@ -18,6 +18,7 @@ from rhsm.certificate import GMT
 import oauth2 as oauth
 import httplib
 import logging
+import base64
 import json
 from spacewalk_splice_tool import utils, constants
 from splice.common.models import Product, Pool, Rules
@@ -63,9 +64,12 @@ class CandlepinConnection():
         oauth_request.sign_request(oauth.SignatureMethod_HMAC_SHA1(), self.consumer, None)
 
         headers = dict(oauth_request.to_header().items() + {'cp-user':'admin'}.items())
+	auth = base64.encodestring( 'admin' + ':' + 'admin' )
 
         # Actually make the request
-        self.connection.request(request_method, full_url, headers=headers, body=body) 
+	print full_url
+        #self.connection.request(request_method, full_url, headers=headers, body=body) 
+        self.connection.request(request_method, full_url, headers={ 'Authorization' : 'Basic ' + auth }, body=body)
         # Get the response and read the output
         response = self.connection.getresponse()
         output = response.read()
@@ -83,16 +87,16 @@ class CandlepinConnection():
         return None
         
     def getOwners(self):
-        return self._request('/owners', 'GET')
+        return self._request('/organizations', 'GET')
 
     def createOwner(self, key, name):
         params = {"key": key}
         if name:
             params['displayName'] = name
-        return self._request('/owners', 'POST', info=params)
+        return self._request('/organizations', 'POST', info=params)
 
     def deleteOwner(self, key):
-        return self._request("/owners/%s" % key, 'DELETE')
+        return self._request("/organizations/%s" % key, 'DELETE')
 
     def checkin(self, uuid, checkin_date=None ):
         method = "/consumers/%s/checkin" % self._sanitize(uuid)
