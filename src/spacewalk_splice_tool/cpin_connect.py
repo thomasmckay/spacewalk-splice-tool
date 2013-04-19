@@ -2,6 +2,7 @@
 import base64
 import logging
 import sys
+import itertools
 import urllib
 import urlparse
 from rhsm.connection import UEPConnection, RestlibException
@@ -12,6 +13,11 @@ _LIBPATH = "/usr/share/rhsm"
 if _LIBPATH not in sys.path:
     sys.path.append(_LIBPATH)
 
+from katello.client.api.organization import OrganizationAPI
+from katello.client.api.environment import EnvironmentAPI
+from katello.client.api.system import SystemAPI
+from katello.client import server
+from katello.client.server import BasicAuthentication, SSLAuthentication
 from subscription_manager import logutil
 from subscription_manager.certdirectory import CertificateDirectory
 from rhsm.certificate import GMT
@@ -35,6 +41,15 @@ class NotFoundException():
 class CandlepinConnection():
 
     def __init__(self):
+        self.orgapi  = OrganizationAPI()
+        self.systemapi  = SystemAPI()
+        self.envapi  = EnvironmentAPI()
+        # XXX: not sure yet how this works..
+        s = server.KatelloServer('10.16.79.133', '443', 'https', '/headpin')
+        s.set_auth_method(BasicAuthentication('admin', 'admin'))
+        server.set_active_server(s)
+
+
         CONSUMER_KEY = CONFIG.get("candlepin", "oauth_key")
         CONSUMER_SECRET = CONFIG.get("candlepin", "oauth_secret")
         # NOTE: callers must add leading slash when appending
@@ -48,6 +63,8 @@ class CandlepinConnection():
 
 
     def _request(self, rest_method, request_method='GET', info=None, decode_json=True):
+
+        raise Exception("SHOULD NOT BE HERE")
         # Formulate a OAuth request with the embedded consumer with key/secret pair
         if rest_method[0] != '/':
             raise Exception("rest_method must begin with a / char")
@@ -64,10 +81,9 @@ class CandlepinConnection():
         oauth_request.sign_request(oauth.SignatureMethod_HMAC_SHA1(), self.consumer, None)
 
         headers = dict(oauth_request.to_header().items() + {'cp-user':'admin'}.items())
-	auth = base64.encodestring( 'admin' + ':' + 'admin' )
+        auth = base64.encodestring( 'admin' + ':' + 'admin' )
 
         # Actually make the request
-	print full_url
         #self.connection.request(request_method, full_url, headers=headers, body=body) 
         self.connection.request(request_method, full_url, headers={ 'Authorization' : 'Basic ' + auth }, body=body)
         # Get the response and read the output
@@ -77,6 +93,7 @@ class CandlepinConnection():
         if response.status == 404:
             raise NotFoundException()
         if response.status not in [200, 204]:
+            print output
             raise Exception("bad response code: %s" % response.status)
 
         if output:
@@ -87,13 +104,14 @@ class CandlepinConnection():
         return None
         
     def getOwners(self):
-        return self._request('/organizations', 'GET')
+        return self.orgapi.organizations()
+        #return self._request('/organizations', 'GET')
 
-    def createOwner(self, key, name):
-        params = {"key": key}
-        if name:
-            params['displayName'] = name
-        return self._request('/organizations', 'POST', info=params)
+    def createOwner(self, label, name):
+        org = self.orgapi.create(name, label, "no description")
+        library = self.envapi.library_by_org(org['label'])
+        self.envapi.create(org['label'], "spacewalk_env", "spacewalk_environment", '', library['id'])
+        return True
 
     def deleteOwner(self, key):
         return self._request("/organizations/%s" % key, 'DELETE')
@@ -107,40 +125,27 @@ class CandlepinConnection():
         return self._request(method, 'PUT')
 
     def createConsumer(self, name, facts, installed_products, last_checkin, uuid=None, owner=None):
-        info = {"type": 'system',
-                  "name": name,
-                  "facts": facts}
-        if installed_products:
-            info['installedProducts'] = installed_products
 
-        if uuid:
-            info['uuid'] = uuid
+        # two hacks: name should be name, and we should be able to pass installed products up as part of this
+        consumer = self.systemapi.register(name=uuid, org='satellite-' + owner, environment_id=None,
+                                            facts=facts, activation_keys=None, cp_type='system')
 
-        url = "/consumers"
+        returned = self.systemapi.update(consumer['uuid'], {'name': consumer['name'], 'installedProducts':installed_products})
 
-        if owner:
-            query_param = urllib.urlencode({"owner": owner})
-            url += "?%s" % query_param
+        print "GOT BACK %s"  % returned
 
-        # create the consumer
-        consumer = self._request(url, 'POST', info)
-
-
-        # now do a bind
-        url = "/consumers/%s/entitlements" % consumer['uuid']
-        self._request(url, 'POST')
-
-        # update the last checkin time
-        self.checkin(consumer['uuid'], self._convert_date(last_checkin))
+        # we need to bind and set lastCheckin time
 
         return consumer['uuid']
         
 
     
-    def updateConsumer(self, uuid, facts, installed_products, last_checkin, owner=None, guest_uuids=None,
+    def updateConsumer(self, cp_uuid, facts, installed_products, last_checkin, sw_id, owner=None, guest_uuids=None,
                         release=None, service_level=None):
         # XXX: need to support altering owner of existing consumer
+
         params = {}
+        params['name'] = sw_id
         if installed_products is not None:
             params['installedProducts'] = installed_products
         if guest_uuids is not None:
@@ -152,16 +157,27 @@ class CandlepinConnection():
         if service_level is not None:
             params['serviceLevel'] = service_level
 
-        url = "/consumers/%s" % self._sanitize(uuid)
-        self._request(url, 'PUT', info=params)
-        self.checkin(uuid, self._convert_date(last_checkin))
+        self.systemapi.update(cp_uuid, params)
+
+        #self.checkin(uuid, self._convert_date(last_checkin))
 
     def getConsumers(self, owner=None):
-        url = '/consumers/'
-        if owner:
-            method = "%s?owner=%s" % (method, owner)
+        #url = '/consumers/'
+        #if owner:
+        #    method = "%s?owner=%s" % (method, owner)
 
-        return self._request(url, 'GET')
+        #return self._request(url, 'GET')
+
+        # the API wants "orgId" but they mean "label"
+        org_ids = map(lambda x: x['label'], self.orgapi.organizations())
+        consumer_list = []
+        for org_id in org_ids:
+            consumer_list.append(self.systemapi.systems_by_org(orgId=org_id))
+        
+        # flatten the list
+        return list(itertools.chain.from_iterable(consumer_list))
+
+            
 
     def unregisterConsumers(self, consumer_id_list):
         url = '/consumers/%s'
@@ -175,8 +191,7 @@ class CandlepinConnection():
         self._request(url % consumer_id, 'DELETE')
 
     def getConsumer(self, uuid):
-        url = "/consumers/%s" % self._sanitize(uuid)
-        return self._request(url, 'GET')
+        return 
 
     def getEntitlements(self, uuid):
         url = "/consumers/%s/entitlements" % self._sanitize(uuid)

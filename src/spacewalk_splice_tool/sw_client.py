@@ -29,19 +29,19 @@ class SpacewalkClient(object):
     
     def get_db_output(self, report_path):
         # capture data from spacewalk
-        #process = subprocess.Popen(['/usr/bin/spacewalk-report', report_path], stdout=subprocess.PIPE)
-        #stdout, stderr = process.communicate()
+        process = subprocess.Popen(['/usr/bin/spacewalk-report', report_path], stdout=subprocess.PIPE)
+        stdout, stderr = process.communicate()
 
-        #reader = csv.DictReader(stdout.decode('ascii').splitlines())
+        reader = csv.DictReader(stdout.decode('ascii').splitlines())
 
         #XXX: suboptimal 
-        #retval = []
-        #for r in reader:
-        #    retval.append(r)
+        retval = []
+        for r in reader:
+            retval.append(r)
 
-        retval = [
-            '1000010000,Red Hat (Internal Use Only),1,beav-sat-client,beav-sat-client,10.16.79.126,,beav,2013-04-17 20:05:34,2013-04-18 08:08:10,rhel-x86_64-server-6,Spacewalk Management Entitled Servers,,,x86_64,1 CPUs 1 Sockets; eth0 10.16.79.126/255.255.252.0 52:54:00:26:96:a7; lo 127.0.0.1/255.0.0.0 00:00:00:00:00:00,996,1'
-            ]
+        #retval = [
+        #    '1000010000,Red Hat (Internal Use Only),1,beav-sat-client,beav-sat-client,10.16.79.126,,beav,2013-04-17 20:05:34,2013-04-18 08:08:10,rhel-x86_64-server-6,Spacewalk Management Entitled Servers,,,x86_64,1 CPUs 1 Sockets; eth0 10.16.79.126/255.255.252.0 52:54:00:26:96:a7; lo 127.0.0.1/255.0.0.0 00:00:00:00:00:00,996,1'
+        #    ]
 
         return retval
 

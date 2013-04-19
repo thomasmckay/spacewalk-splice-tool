@@ -222,28 +222,28 @@ def upload_to_rcs(rules_data, pool_data, product_data, mpu_data, sample_json=Non
             utils.systemExit(os.EX_DATAERR, "Error uploading marketing product usage data")
 
         # Upload Rules
-        url = "/v1/rules/"
-        status, body = splice_conn.POST(url, rules_data)
-        _LOG.info("POST to %s: received %s %s" % (url, status, body))
-        if status != 202 and status != 204:
-            _LOG.error("Rules data was not uploaded correctly")
-            utils.systemExit(os.EX_DATAERR, "Error uploading rules data")
-        
-        # Upload Pools
-        url = "/v1/pool/"
-        status, body = splice_conn.POST(url, pool_data)
-        _LOG.info("POST to %s: received %s %s" % (url, status, body))
-        if status != 202 and status != 204:
-            _LOG.error("Pool data was not uploaded correctly")
-            utils.systemExit(os.EX_DATAERR, "Error uploading pool data")
-        
-        # Upload Products
-        url = "/v1/product/"
-        status, body = splice_conn.POST(url, product_data)
-        _LOG.info("POST to %s: received %s %s" % (url, status, body))
-        if status != 202 and status != 204:
-            _LOG.error("Products data was not uploaded correctly")
-            utils.systemExit(os.EX_DATAERR, "Error uploading products data")
+        #url = "/v1/rules/"
+        #status, body = splice_conn.POST(url, rules_data)
+        #_LOG.info("POST to %s: received %s %s" % (url, status, body))
+        #if status != 202 and status != 204:
+        #    _LOG.error("Rules data was not uploaded correctly")
+        #    utils.systemExit(os.EX_DATAERR, "Error uploading rules data")
+        #
+        ## Upload Pools
+        #url = "/v1/pool/"
+        #status, body = splice_conn.POST(url, pool_data)
+        #_LOG.info("POST to %s: received %s %s" % (url, status, body))
+        #if status != 202 and status != 204:
+        #    _LOG.error("Pool data was not uploaded correctly")
+        #    utils.systemExit(os.EX_DATAERR, "Error uploading pool data")
+        #
+        ## Upload Products
+        #url = "/v1/product/"
+        #status, body = splice_conn.POST(url, product_data)
+        #_LOG.info("POST to %s: received %s %s" % (url, status, body))
+        #if status != 202 and status != 204:
+        #    _LOG.error("Products data was not uploaded correctly")
+        #    utils.systemExit(os.EX_DATAERR, "Error uploading products data")
 
         utils.systemExit(os.EX_OK, "Upload was successful")
     except Exception, e:
@@ -256,30 +256,25 @@ def update_owners(sw_client, cpin_client, orgs):
     """
 
     owners = cpin_client.getOwners()
-    print "OWNERS: %s" % owners
     org_ids = orgs.keys()
-    owner_keys = map(lambda x: x['id'], owners)
-
-    print "owner_keys: %s" % owner_keys
-    print "org_ids: %s" % org_ids
-   
-    return 
+    owner_labels = map(lambda x: x['label'], owners)
 
     # perform deletions
-    for owner in owners:
-        if owner['key'] == 'admin' or owner['key']:
-            continue
-        if str(owner['key']) not in  org_ids:
-            _LOG.info("removing owner %s, owner is no longer in spacewalk" % owner['key'])
-            cpin_client.deleteOwner(owner['key']) 
+#    for owner in owners:
+#        if owner['key'] == 'admin' or owner['key']:
+#            continue
+#        if str(owner['key']) not in  org_ids:
+#            _LOG.info("removing owner %s, owner is no longer in spacewalk" % owner['key'])
+#            cpin_client.deleteOwner(owner['key']) 
 
     # pull the new owner list, perform creations
-    owners = cpin_client.getOwners()
+#    owners = cpin_client.getOwners()
 
     for org_id in org_ids:
-        if org_id not in owner_keys:
-            _LOG.info("creating owner %s, owner is in spacewalk but not candlepin" % org_id)
-            cpin_client.createOwner(org_id, orgs[org_id])
+        katello_label = 'satellite-' + org_id
+        if katello_label not in owner_labels:
+            _LOG.info("creating owner %s, owner is in spacewalk but not katello" % katello_label)
+            cpin_client.createOwner(label=katello_label, name=orgs[org_id])
             
 
 def delete_stale_consumers(sw_client, cpin_client, consumer_list, system_list):
@@ -307,23 +302,33 @@ def upload_to_candlepin(consumers, sw_client, cpin_client):
     Uploads consumer data to candlepin
     """
 
+    # XXX: confusing
+    consumers_from_kt = cpin_client.getConsumers()
+    sysids_to_uuids = {}
+    for consumer in consumers_from_kt:
+        sysids_to_uuids[consumer['name']] = consumer['uuid']
+    sw_sysids_from_kt = map(lambda x: x['name'], consumers_from_kt)
+    print sysids_to_uuids
+
     for consumer in consumers:
-        try:
-            # the first call will fail if the consumer doesn't exist, and send us to the except block
-            cpin_client.getConsumer(consumer['id'])
-            cpin_client.updateConsumer(uuid=consumer['id'],
+        if consumer['id'] in sw_sysids_from_kt:
+            print "UPDATING: %s" % consumer
+            # TODO: fix confusing first arg
+            cpin_client.updateConsumer(cp_uuid=sysids_to_uuids[consumer['id']],
+                                          sw_id = consumer['id'],
                                           facts=consumer['facts'],
                                           installed_products=consumer['installed_products'],
                                           owner=consumer['owner'],
                                           last_checkin=consumer['last_checkin'])
-        except NotFoundException:
-            # if we don't have a candlepin ID for this system, treat as a new system
-            uuid = cpin_client.createConsumer(name=consumer['name'],
+        else:
+
+            # TODO: FIX UUID TO NAME SHENANIGANS IN CPIN_CONNECT
+            uuid = cpin_client.createConsumer(name='unused-field',
+                                                uuid=consumer['id'],
                                                 facts=consumer['facts'],
                                                 installed_products=consumer['installed_products'],
                                                 last_checkin=consumer['last_checkin'],
-                                                owner=consumer['owner'],
-                                                uuid=consumer['id'])
+                                                owner=consumer['owner'])
 
 def get_checkin_config():
     return {
@@ -360,7 +365,9 @@ def main(sample_json=None):
     update_owners(client, cpin_client, org_list)
 
     cpin_consumer_list = cpin_client.getConsumers()
-    delete_stale_consumers(client, cpin_client, cpin_consumer_list, system_details)
+
+
+    #delete_stale_consumers(client, cpin_client, cpin_consumer_list, system_details)
 
 
     # build the clone mapping
@@ -376,6 +383,7 @@ def main(sample_json=None):
     _LOG.info("found %s systems to upload into candlepin" % len(consumers))
     _LOG.info("uploading to candlepin...")
     upload_to_candlepin(consumers, client, cpin_client)
+    sys.exit(0)
     _LOG.info("upload completed, downloading consumers from candlepin")
     # now pull put out of candlepin, and into rcs!
     cpin_consumers = get_candlepin_consumers()
@@ -388,15 +396,12 @@ def main(sample_json=None):
     # enrich with product usage info
     map(lambda rmu : rmu.update({'product_info' : transform_entitlements_to_rcs(get_candlepin_entitlements(rmu['instance_identifier']))}), rcs_mkt_usage)
     
-    rules_data = cpin_client.getRules()
-    pool_data = cpin_client.getPools()
-    product_data = cpin_client.getProducts()
+    #rules_data = cpin_client.getRules()
+    #pool_data = cpin_client.getPools()
+    #product_data = cpin_client.getProducts()
 
     _LOG.info("uploading to RCS")
-    upload_to_rcs(rules_data=build_rcs_data([rules_data]), 
-        pool_data=build_rcs_data(pool_data), 
-        product_data=build_rcs_data(product_data), 
-        mpu_data=build_rcs_data(rcs_mkt_usage), sample_json=sample_json)
+    upload_to_rcs( mpu_data=build_rcs_data(rcs_mkt_usage), sample_json=sample_json)
     _LOG.info("run complete") 
 
     # find any systems in candlepin that need to be deleted
