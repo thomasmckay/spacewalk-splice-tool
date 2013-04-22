@@ -64,11 +64,11 @@ if __name__ == "__main__":
     (opts, args) = parser.parse_args()
 
     lockfile = open(LOCKFILE, 'w')
-
     if not obtain_lockfile(lockfile):
         _LOG.error("unable to obtain lockfile")
         sys.exit(1)
 
-    checkin.main(opts.sample_json)
-
-    release_lockfile(lockfile)
+    try:
+        checkin.main(opts)
+    finally:
+        release_lockfile(lockfile)
