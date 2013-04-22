@@ -12,12 +12,13 @@
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 
-from optparse import OptionParser
-from spacewalk_splice_tool import checkin, utils, constants
 import fcntl
 import logging
 import logging.config
 import sys
+
+from optparse import OptionParser
+from spacewalk_splice_tool import checkin, utils, constants
 
 CONFIG = utils.cfg_init(config_file=constants.SPLICE_CHECKIN_CONFIG)
 
