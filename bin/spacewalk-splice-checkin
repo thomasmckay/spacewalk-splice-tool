@@ -56,8 +56,15 @@ if __name__ == "__main__":
                       help="Specify a directory to write the json data sent "
                            "to Splice, if not specified no data is written "
                            "to file.")
+    parser.add_option('--spacewalk-sync', action='store', default=None,
+                      help="Sync and store spacewalk data to the specified "
+                           "directory.")
+    parser.add_option('--splice-sync', action='store', default=None,
+                      help="Sync data from specified directory to splice.")
     (opts, args) = parser.parse_args()
+
     lockfile = open(LOCKFILE, 'w')
+
     if not obtain_lockfile(lockfile):
         _LOG.error("unable to obtain lockfile")
         sys.exit(1)
