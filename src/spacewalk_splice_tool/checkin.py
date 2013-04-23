@@ -38,6 +38,7 @@ import splice.common.utils
 _LOG = logging.getLogger(__name__)
 CONFIG = utils.cfg_init(config_file=constants.SPLICE_CHECKIN_CONFIG)
 
+SAT_OWNER_PREFIX = 'satellite-'
 
 def get_product_ids(subscribedchannels, clone_map):
     """
@@ -255,7 +256,6 @@ def update_owners(cpin_client, orgs):
     ensure that the candlepin owner set matches what's in spacewalk
     """
 
-    SAT_OWNER_PREFIX = 'satellite-'
     owners = cpin_client.getOwners()
     org_ids = orgs.keys()
     owner_labels = map(lambda x: x['label'], owners)
@@ -287,25 +287,32 @@ def update_owners(cpin_client, orgs):
             
 
 
-def delete_stale_consumers(sw_client, cpin_client, consumer_list, system_list):
+def delete_stale_consumers(cpin_client, consumer_list, system_list):
     """
     removes consumers that are in candlepin and not spacewalk. This is to clean
     up any systems that were deleted in spacewalk.
     """
 
-    system_id_set = set()
-    for system in system_list:
-        system_id_set.add(system['server_id'])
-   
-    consumer_id_set = set()
+    system_id_list = map(lambda x: x['server_id'], system_list)
+
+    owner_labels = {}
+    owner_list = cpin_client.getOwners()
+    for owner in owner_list:
+        owner_labels[owner['id']] = owner['label']
+    
+  
+    consumers_to_delete = [] 
     for consumer in consumer_list:
-        consumer_id_set.add(consumer['uuid'])
+        # don't delete consumers that are not in orgs we manage!
+        if not owner_labels[consumer['environment']['organization_id']].startswith(SAT_OWNER_PREFIX):
+            continue
+        if consumer['name'] not in system_id_list:
+            consumers_to_delete.append(consumer)
 
     
-    consumers_to_remove = list(consumer_id_set - system_id_set)
-    _LOG.info("removing %s consumers that are no longer in spacewalk" % len(consumers_to_remove))
-    cpin_client.unregisterConsumers(consumers_to_remove)
-        
+    _LOG.info("removing %s consumers that are no longer in spacewalk" % len(consumers_to_delete))
+    for consumer in consumers_to_delete:
+        cpin_client.deleteConsumer(consumer['uuid'])
 
 def upload_to_candlepin(consumers, sw_client, cpin_client):
     """
@@ -376,7 +383,7 @@ def main(sample_json=None):
     cpin_consumer_list = cpin_client.getConsumers()
 
 
-    #delete_stale_consumers(client, cpin_client, cpin_consumer_list, system_details)
+    delete_stale_consumers(cpin_client, cpin_consumer_list, system_details)
 
 
     # build the clone mapping

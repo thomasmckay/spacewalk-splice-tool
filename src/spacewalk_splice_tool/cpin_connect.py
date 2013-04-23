@@ -178,12 +178,10 @@ class CandlepinConnection():
 
             
 
-    def unregisterConsumers(self, consumer_id_list):
-        url = '/consumers/%s'
-        # we might change to to a bulk delete later
-        # TODO: return something relevant
-        for consumer_id in consumer_id_list:
-            self._request(url % consumer_id, 'DELETE')
+    def deleteConsumer(self, consumer_uuid):
+        self.systemapi.unregister(consumer_uuid)
+        # XXX: only for dev use
+        self.systemapi.remove_consumer_deletion_record(consumer_uuid)
 
     def removeDeletionRecord(self, consumer_id):
         url = '/consumers/%s/deletionrecord'
