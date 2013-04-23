@@ -45,7 +45,8 @@ mkdir -p %{buildroot}/%{_datadir}/spacewalk/reports/data/
 
 # Configuration
 cp -R etc/rhn/splice/* %{buildroot}/%{_sysconfdir}/rhn/splice/
-cp scripts/spacewalk-splice-tool.cron %{buildroot}/%{_sysconfdir}/cron.d/
+cp -R etc/cron.d/* %{buildroot}/%{_sysconfdir}/cron.d/
+cp etc/sysconfig/spacewalk-sst-sync %{buildroot}/%{_sysconfdir}/
 
 # Tools
 cp bin/* %{buildroot}/%{_bindir}/
@@ -66,9 +67,12 @@ rm -rf %{buildroot}
 %files
 %defattr(-,root,root,-)
 %{_bindir}/spacewalk-splice-checkin
+%{_bindir}/spacewalk-sst-sync
 %{python_sitelib}/spacewalk_splice_tool*
 %config(noreplace) %{_sysconfdir}/rhn/splice/checkin.conf
-%config(noreplace) %attr(644,root,root) /%{_sysconfdir}/cron.d/spacewalk-splice-tool.cron
+%config(noreplace) %{_sysconfdir}/spacewalk-sst-sync
+%config(noreplace) %attr(644,root,root) %{_sysconfdir}/cron.d/spacewalk-sst-sync
+%config(noreplace) %attr(644,root,root) %{_sysconfdir}/cron.d/splice-sst-sync
 %attr(644,root,root) %{_datadir}/spacewalk/reports/data/cp-export
 %doc LICENSE
 
