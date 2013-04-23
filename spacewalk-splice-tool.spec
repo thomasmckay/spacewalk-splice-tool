@@ -46,7 +46,7 @@ mkdir -p %{buildroot}/%{_datadir}/spacewalk/reports/data/
 # Configuration
 cp -R etc/rhn/splice/* %{buildroot}/%{_sysconfdir}/rhn/splice/
 cp -R etc/cron.d/* %{buildroot}/%{_sysconfdir}/cron.d/
-cp etc/sysconfig/spacewalk-sst-sync %{buildroot}/%{_sysconfdir}/
+cp etc/sysconfig/spacewalk-sst-sync %{buildroot}/%{_sysconfdir}/sysconfig/
 
 # Tools
 cp bin/* %{buildroot}/%{_bindir}/
