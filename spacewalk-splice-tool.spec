@@ -37,6 +37,7 @@ rm -rf %{buildroot}
 pushd src
 %{__python} setup.py install -O1 --skip-build --root %{buildroot}
 popd
+mkdir -p %{buildroot}/%{_sysconfdir}/sysconfig/
 mkdir -p %{buildroot}/%{_sysconfdir}/rhn/splice/
 mkdir -p %{buildroot}/%{_bindir}
 mkdir -p %{buildroot}/%{_var}/log/%{name}
