@@ -250,32 +250,42 @@ def upload_to_rcs(rules_data, pool_data, product_data, mpu_data, sample_json=Non
         _LOG.error("Error uploading MarketingProductUsage Data; Error: %s" % e)
         utils.systemExit(os.EX_DATAERR, "Error uploading; Error: %s" % e)
 
-def update_owners(sw_client, cpin_client, orgs):
+def update_owners(cpin_client, orgs):
     """
     ensure that the candlepin owner set matches what's in spacewalk
     """
 
+    SAT_OWNER_PREFIX = 'satellite-'
     owners = cpin_client.getOwners()
     org_ids = orgs.keys()
     owner_labels = map(lambda x: x['label'], owners)
 
-    # perform deletions
-#    for owner in owners:
-#        if owner['key'] == 'admin' or owner['key']:
-#            continue
-#        if str(owner['key']) not in  org_ids:
-#            _LOG.info("removing owner %s, owner is no longer in spacewalk" % owner['key'])
-#            cpin_client.deleteOwner(owner['key']) 
-
-    # pull the new owner list, perform creations
-#    owners = cpin_client.getOwners()
-
     for org_id in org_ids:
-        katello_label = 'satellite-' + org_id
+        katello_label = SAT_OWNER_PREFIX + org_id
         if katello_label not in owner_labels:
-            _LOG.info("creating owner %s, owner is in spacewalk but not katello" % katello_label)
+            _LOG.info("creating owner %s (%s), owner is in spacewalk but not katello" % (katello_label, orgs[org_id]))
             cpin_client.createOwner(label=katello_label, name=orgs[org_id])
+
+    # get the owner list again
+    owners = cpin_client.getOwners()
+    # build up a label->name mapping this time
+    owner_labels_names = {}
+    for owner in owners:
+        owner_labels_names[owner['label']] = owner['name']
+
+    # perform deletions
+    for owner_label in owner_labels_names.keys():
+        # bail out if this isn't an owner we are managing
+        if not owner_label.startswith(SAT_OWNER_PREFIX):
+            continue
+        
+        # get the org ID from the katello name
+        kt_org_id = owner_label[len(SAT_OWNER_PREFIX):]
+        if kt_org_id not in org_ids:
+            _LOG.info("removing owner %s (name: %s), owner is no longer in spacewalk" % (owner_label, owner_labels_names[owner_label]))
+            cpin_client.deleteOwner(name=owner_labels_names[owner_label])
             
+
 
 def delete_stale_consumers(sw_client, cpin_client, consumer_list, system_list):
     """
@@ -356,13 +366,12 @@ def main(sample_json=None):
     start_time = time.time()
     consumers = []
 
-
     _LOG.info("Started capturing system data from spacewalk database and transforming to candlepin model")
     _LOG.info("retrieving data from spacewalk")
     system_details = client.get_system_list()
     org_list = client.get_org_list()
 
-    update_owners(client, cpin_client, org_list)
+    update_owners(cpin_client, org_list)
 
     cpin_consumer_list = cpin_client.getConsumers()
 

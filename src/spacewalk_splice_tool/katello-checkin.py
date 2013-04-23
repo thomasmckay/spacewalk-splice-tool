@@ -32,7 +32,7 @@ try:
     from katello.client.api.user_role import UserRoleAPI
     from katello.client.api.permission import PermissionAPI
     from katello.client.api.provider import ProviderAPI
-    #from katello.client.api.distributor import DistributorAPI
+    from katello.client.api.distributor import DistributorAPI
 except ImportError, e:
     sys.stderr.write("[Error] %s\n, 'pip-python install katello-cli' is required\n" % e)
     sys.exit(-1)
@@ -48,7 +48,7 @@ def random_string():
 
 
 def init_api():
-    global orgapi, userapi, roleapi, permapi, provapi, envapi, distapi
+    global orgapi, userapi, roleapi, permapi, provapi, envapi, distapi, sysapi
 
     orgapi  = OrganizationAPI()
     userapi = UserAPI()
@@ -56,7 +56,8 @@ def init_api():
     permapi = PermissionAPI()
     provapi = ProviderAPI()
     envapi  = EnvironmentAPI()
-    #distapi = DistributorAPI()
+    distapi = DistributorAPI()
+    sysapi = SystemAPI()
 
 
 def parse_server(url):
@@ -179,22 +180,18 @@ def setup_permissions():
     rnd_perm  = get_or_create_permission(rnd_role, "Engineering Manager")
 
 
-def setup_mega():
-    global mega_org
+def setup_demo():
+
+    org0 = get_or_create_org('Org0', 'Org0', 'Admin org')
+    org1 = get_or_create_org('Org1', 'Org1', 'Child org')
 
     # Import manifest
     #
-    redhat_prov = provapi.provider_by_name(mega_org['name'], 'Red Hat')
-    manifest = './mega-manifest.zip'
+    redhat_prov = provapi.provider_by_name(org0['name'], 'Red Hat')
+    manifest = '/home/tomckay/code/mega/gist/mega-manifest.zip'
     f = open(manifest)
     try:
         provapi.import_manifest(redhat_prov['id'], f)
-
-        # For demo purposes hack the candlepin db to increase subscription quantity
-        #rtn = os.system("/usr/bin/psql -U candlepin -c 'UPDATE cp_pool SET quantity=800;'")
-        #if opts.verbose:
-        #    print "[Info] Overwrote candlepin pool quantity"
-
         if opts.verbose:
             print "[Info] Manifest '%s' imported" % manifest
     except server.ServerRequestError, e:
@@ -208,34 +205,47 @@ def setup_mega():
 
     # Environments
     #
-    environment_name = 'Divisions'
-    library = envapi.library_by_org(mega_org['label'])
+    environment_name = 'Sat5'
+    library = envapi.library_by_org(org0['label'])
     try:
-        env = envapi.create(mega_org['label'], environment_name, environment_name, '', library['id'])
+        env = envapi.create(org0['label'], environment_name, environment_name, '', library['id'])
         if opts.verbose:
-            print "[Info] %s environment '%s' created" % (mega_org['name'], environment_name)
+            print "[Info] %s environment '%s' created" % (org0['name'], environment_name)
     except server.ServerRequestError, e:
         if e[0] == 422:
-            env = envapi.environment_by_name(mega_org['label'], environment_name)
+            env = envapi.environment_by_name(org0['label'], environment_name)
             if opts.verbose:
-                print "[Info] %s environment '%s' exists" % (mega_org['name'], environment_name)
+                print "[Info] %s environment '%s' exists" % (org0['name'], environment_name)
         else:
             raise(e)
 
     # Distributors
     #
-    distributor_name = 'Engineering'
+    distributor_name = 'Org1'
     try:
-        distapi.create(distributor_name, mega_org['name'], env['id'])
+        dist1 = distapi.create(distributor_name, org0['name'], env['id'])
         if opts.verbose:
-            print "[Info] %s distributor '%s' created" % (mega_org['name'], distributor_name)
+            print "[Info] %s distributor '%s' created" % (org0['name'], distributor_name)
     except server.ServerRequestError, e:
         if e[0] == 422:
-            env = distapi.distributor_by_name(mega_org['label'], distributor_name)
+            dist1 = distapi.distributor_by_name(org0['label'], distributor_name)
             if opts.verbose:
-                print "[Info] %s distributor '%s' exists" % (mega_org['name'], 'Divisions')
+                print "[Info] %s distributor '%s' exists" % (org0['name'], distributor_name)
         else:
             raise(e)
+
+    manifest = '/tmp/org1.zip'
+    f = open(manifest, 'w')
+    try:
+        data = distapi.export_manifest(dist1['uuid'])
+        f.write(data)
+
+        if opts.verbose:
+            print "[Info] Manifest '%s' exported" % manifest
+    except server.ServerRequestError, e:
+        raise(e)
+    finally:
+        f.close
 
     return
 
@@ -258,15 +268,13 @@ if __name__ == '__main__':
     init_server()
     init_api()
 
-    print orgapi.organizations()
-    try:
-        orgapi.organization('Splice Org')
-        print "EXISTS"
-    except server.ServerRequestError, e:
-        if e[0] == 404:
-            print "NEED TO CREATE"
-        else:
-            raise(e)
+    setup_demo()
+
+    sys11 = '789e326a-8b57-438a-96e3-5e99b23051c5'
+    #sysapi.update(sys11, {"installedProducts": [{"productName": "RHEL 6", "productId": "69"}]})
+    #sysapi.refresh_subscriptions(sys11)
+
+    #print sysapi.refresh_subscriptions('79898551-0a7a-462b-93b6-76683344e08e')
 
     #setup_orgs()
     #setup_users()

@@ -105,16 +105,15 @@ class CandlepinConnection():
         
     def getOwners(self):
         return self.orgapi.organizations()
-        #return self._request('/organizations', 'GET')
 
     def createOwner(self, label, name):
         org = self.orgapi.create(name, label, "no description")
         library = self.envapi.library_by_org(org['label'])
         self.envapi.create(org['label'], "spacewalk_env", "spacewalk_environment", '', library['id'])
-        return True
 
-    def deleteOwner(self, key):
-        return self._request("/organizations/%s" % key, 'DELETE')
+    def deleteOwner(self, name):
+        # todo: error handling, not sure if orgapi will handle it
+        self.orgapi.delete(name)
 
     def checkin(self, uuid, checkin_date=None ):
         method = "/consumers/%s/checkin" % self._sanitize(uuid)
