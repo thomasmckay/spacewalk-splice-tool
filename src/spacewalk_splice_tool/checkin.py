@@ -339,13 +339,14 @@ def build_rcs_data(data):
     """
     return {"objects": data}
 
-def main(sample_json=None):
-    # performs the data capture, translation and checkin to candlepin
+
+def spacewalk_sync():
+    """
+    Performs the data capture, translation and checkin to candlepin
+    """
     client = SpacewalkClient()
     cpin_client = CandlepinConnection()
-    start_time = time.time()
     consumers = []
-
 
     _LOG.info("Started capturing system data from spacewalk database and transforming to candlepin model")
     _LOG.info("retrieving data from spacewalk")
@@ -371,7 +372,14 @@ def main(sample_json=None):
     _LOG.info("found %s systems to upload into candlepin" % len(consumers))
     _LOG.info("uploading to candlepin...")
     upload_to_candlepin(consumers, client, cpin_client)
-    _LOG.info("upload completed, downloading consumers from candlepin")
+    _LOG.info("upload completed")
+
+
+def splice_sync(options):
+    """
+    Syncs data from candlepin to splice
+    """
+    _LOG.info("downloading consumers from candlepin")
     # now pull put out of candlepin, and into rcs!
     cpin_consumers = get_candlepin_consumers()
     _LOG.info("creating marketingproductusage objects")
@@ -379,9 +387,18 @@ def main(sample_json=None):
     # create the base marketing usage list
     rcs_mkt_usage = map(transform_to_rcs, cpin_consumers)
     # enrich with facts
-    map(lambda rmu : rmu.update({'facts' : transform_facts_to_rcs(get_candlepin_consumer_facts(rmu['instance_identifier']))}), rcs_mkt_usage)
+    map(lambda rmu : 
+            rmu.update(
+                {'facts': transform_facts_to_rcs(
+                            get_candlepin_consumer_facts(
+                                rmu['instance_identifier']))}), rcs_mkt_usage)
     # enrich with product usage info
-    map(lambda rmu : rmu.update({'product_info' : transform_entitlements_to_rcs(get_candlepin_entitlements(rmu['instance_identifier']))}), rcs_mkt_usage)
+    map(lambda rmu : 
+            rmu.update(
+                {'product_info': transform_entitlements_to_rcs(
+                                    get_candlepin_entitlements(
+                                        rmu['instance_identifier']))}), 
+                                        rcs_mkt_usage)
     
     rules_data = cpin_client.getRules()
     pool_data = cpin_client.getPools()
@@ -391,11 +408,22 @@ def main(sample_json=None):
     upload_to_rcs(rules_data=build_rcs_data([rules_data]), 
         pool_data=build_rcs_data(pool_data), 
         product_data=build_rcs_data(product_data), 
-        mpu_data=build_rcs_data(rcs_mkt_usage), sample_json=sample_json)
+        mpu_data=build_rcs_data(rcs_mkt_usage), 
+                                sample_json=options.sample_json)
+    _LOG.info("upload completed")
+
+
+def main(options):
+
+    start_time = time.time()
+    _LOG.info("run starting")
+    if options.spacewalk_sync:
+        spacewalk_sync()
+    if options.splice_sync:
+        splice_sync()
+    finish_time = time.time() - start_time
     _LOG.info("run complete") 
 
-    # find any systems in candlepin that need to be deleted
-    finish_time = time.time() - start_time
 
 if __name__ == "__main__":
     parser = OptionParser(description="Spacewalk Splice Tool")
