@@ -70,7 +70,7 @@ rm -rf %{buildroot}
 %attr(755,root,root) %{_bindir}/spacewalk-sst-sync
 %{python_sitelib}/spacewalk_splice_tool*
 %config(noreplace) %{_sysconfdir}/rhn/splice/checkin.conf
-%config(noreplace) %{_sysconfdir}/spacewalk-sst-sync
+%config(noreplace) %{_sysconfdir}/sysconfig/spacewalk-sst-sync
 %config(noreplace) %attr(644,root,root) %{_sysconfdir}/cron.d/spacewalk-sst-sync
 %config(noreplace) %attr(644,root,root) %{_sysconfdir}/cron.d/splice-sst-sync
 %attr(644,root,root) %{_datadir}/spacewalk/reports/data/cp-export
