@@ -53,15 +53,14 @@ _LOG = logging.getLogger(__name__)
 
 if __name__ == "__main__":
     parser = OptionParser(description="Spacewalk Splice Tool")
-    parser.add_option('--sample_json', action="store", default=None,
+    parser.add_option('--sample_json', action="store_true", default=None,
                       help="Specify a directory to write the json data sent "
                            "to Splice, if not specified no data is written "
                            "to file.")
-    parser.add_option('--spacewalk-sync', action='store', default=None,
-                      help="Sync and store spacewalk data to the specified "
-                           "directory.")
+    parser.add_option('--spacewalk-sync', action='store_true', default=None,
+                      help="Only sync from spacewalk")
     parser.add_option('--splice-sync', action='store', default=None,
-                      help="Sync data from specified directory to splice.")
+                      help="Only sync to splice")
     (opts, args) = parser.parse_args()
 
     lockfile = open(LOCKFILE, 'w')

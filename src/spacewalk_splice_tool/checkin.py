@@ -417,10 +417,15 @@ def main(options):
 
     start_time = time.time()
     _LOG.info("run starting")
+
     if options.spacewalk_sync:
         spacewalk_sync()
-    if options.splice_sync:
+    elif options.splice_sync:
         splice_sync()
+    else:
+        spacewalk_sync()
+        splice_sync()
+
     finish_time = time.time() - start_time
     _LOG.info("run complete") 
 
