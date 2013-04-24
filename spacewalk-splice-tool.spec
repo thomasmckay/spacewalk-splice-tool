@@ -38,14 +38,14 @@ pushd src
 %{__python} setup.py install -O1 --skip-build --root %{buildroot}
 popd
 mkdir -p %{buildroot}/%{_sysconfdir}/sysconfig/
-mkdir -p %{buildroot}/%{_sysconfdir}/rhn/splice/
+mkdir -p %{buildroot}/%{_sysconfdir}/splice/
 mkdir -p %{buildroot}/%{_bindir}
 mkdir -p %{buildroot}/%{_var}/log/%{name}
 mkdir -p %{buildroot}/%{_sysconfdir}/cron.d
 mkdir -p %{buildroot}/%{_datadir}/spacewalk/reports/data/
 
 # Configuration
-cp -R etc/rhn/splice/* %{buildroot}/%{_sysconfdir}/rhn/splice/
+cp -R etc/splice/* %{buildroot}/%{_sysconfdir}/splice/
 cp -R etc/cron.d/* %{buildroot}/%{_sysconfdir}/cron.d/
 cp etc/sysconfig/spacewalk-sst-sync %{buildroot}/%{_sysconfdir}/sysconfig/
 
@@ -70,7 +70,7 @@ rm -rf %{buildroot}
 %attr(755,root,root) %{_bindir}/spacewalk-splice-checkin
 %attr(755,root,root) %{_bindir}/spacewalk-sst-sync
 %{python_sitelib}/spacewalk_splice_tool*
-%config(noreplace) %{_sysconfdir}/rhn/splice/checkin.conf
+%config(noreplace) %{_sysconfdir}/splice/checkin.conf
 %config(noreplace) %{_sysconfdir}/sysconfig/spacewalk-sst-sync
 %config(noreplace) %attr(644,root,root) %{_sysconfdir}/cron.d/spacewalk-sst-sync
 %config(noreplace) %attr(644,root,root) %{_sysconfdir}/cron.d/splice-sst-sync
