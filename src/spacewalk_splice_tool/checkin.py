@@ -340,7 +340,7 @@ def build_rcs_data(data):
     return {"objects": data}
 
 
-def spacewalk_sync():
+def spacewalk_sync(options):
     """
     Performs the data capture, translation and checkin to candlepin
     """
@@ -382,6 +382,7 @@ def splice_sync(options):
     _LOG.info("downloading consumers from candlepin")
     # now pull put out of candlepin, and into rcs!
     cpin_consumers = get_candlepin_consumers()
+    cpin_client = CandlepinConnection()
     _LOG.info("creating marketingproductusage objects")
 
     # create the base marketing usage list
@@ -419,12 +420,12 @@ def main(options):
     _LOG.info("run starting")
 
     if options.spacewalk_sync:
-        spacewalk_sync()
+        spacewalk_sync(options)
     elif options.splice_sync:
-        splice_sync()
+        splice_sync(options)
     else:
-        spacewalk_sync()
-        splice_sync()
+        spacewalk_sync(options)
+        splice_sync(options)
 
     finish_time = time.time() - start_time
     _LOG.info("run complete") 
