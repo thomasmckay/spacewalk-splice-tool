@@ -12,9 +12,9 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 from spacewalk_splice_tool import utils
 
-RHN_SPLICE_CONFIG_DIR = '/etc/rhn/splice/'
+SPLICE_CONFIG_DIR = '/etc/splice/'
 
-SPLICE_CHECKIN_CONFIG = RHN_SPLICE_CONFIG_DIR + 'checkin.conf'
+SPLICE_CHECKIN_CONFIG = SPLICE_CONFIG_DIR + 'checkin.conf'
 
 CHANNEL_PRODUCT_ID_MAPPING_DIR = "/usr/share/rhsm/product/" + utils.getRelease()
 
