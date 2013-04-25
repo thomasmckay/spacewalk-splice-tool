@@ -303,7 +303,6 @@ def update_users(cpin_client, sw_userlist):
         if sw_username not in kt_users.keys():
             _LOG.info("adding new user %s to katello" % sw_username)
             created_kt_user = cpin_client.createUser(username=sw_username, email=sw_users[sw_username]['email']) 
-            # do role stuff too
 
 def update_roles(cpin_client, sw_userlist):
     sw_users = {}
@@ -317,19 +316,16 @@ def update_roles(cpin_client, sw_userlist):
         # if the user isn't also in SW, bail out
         # NB: we assume kt_users is always be a superset of sw_users
         if kt_username not in sw_users.keys():
-            print "skipping kt_username %s" % kt_username
             continue
 
         # get a flat list of role names, for comparison with sw
         kt_roles = map(lambda x: x['name'], cpin_client.getRoles(user_id = kt_users[kt_username]['id']))
         sw_roles = sw_users[kt_username]['role'].split(';')
 
-        print "KT ROLES FROM MOCK: %s" % kt_roles
 
         # add any new roles
         for sw_role in sw_roles:
             # TODO: handle sat admin
-            print "looking for %s" % ("Org Admin Role for satellite-%s" % sw_users[kt_username]['organization_id'])
             if sw_role == 'Organization Administrator' and \
                 "Org Admin Role for satellite-%s" % sw_users[kt_username]['organization_id'] not in kt_roles:
                     cpin_client.grantOrgAdmin(
@@ -343,8 +339,6 @@ def update_roles(cpin_client, sw_userlist):
                 cpin_client.ungrantOrgAdmin(kt_user=kt_users[kt_username],
                                 kt_org_label = "satellite-%s" % sw_users[kt_username]['organization_id'])
                 
-        
-            
 
 def delete_stale_consumers(cpin_client, consumer_list, system_list):
     """
@@ -384,11 +378,9 @@ def upload_to_candlepin(consumers, sw_client, cpin_client):
     for consumer in consumers_from_kt:
         sysids_to_uuids[consumer['name']] = consumer['uuid']
     sw_sysids_from_kt = map(lambda x: x['name'], consumers_from_kt)
-    print sysids_to_uuids
 
     for consumer in consumers:
         if consumer['id'] in sw_sysids_from_kt:
-            print "UPDATING: %s" % consumer
             # TODO: fix confusing first arg
             cpin_client.updateConsumer(cp_uuid=sysids_to_uuids[consumer['id']],
                                           sw_id = consumer['id'],
