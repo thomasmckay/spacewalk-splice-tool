@@ -1,5 +1,8 @@
 #!/bin/bash
 
 . /etc/sysconfig/spacewalk-sst-sync
+export SPACEWALK_HOST
+export SPACEWALK_SSH_KEY
+
 /usr/bin/spacewalk-splice-checkin --spacewalk-sync
 exit $?
