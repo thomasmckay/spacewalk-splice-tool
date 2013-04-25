@@ -16,6 +16,9 @@ if _LIBPATH not in sys.path:
 from katello.client.api.organization import OrganizationAPI
 from katello.client.api.environment import EnvironmentAPI
 from katello.client.api.system import SystemAPI
+from katello.client.api.permission import PermissionAPI
+from katello.client.api.user import UserAPI
+from katello.client.api.user_role import UserRoleAPI
 from katello.client import server
 from katello.client.server import BasicAuthentication, SSLAuthentication
 from subscription_manager import logutil
@@ -43,9 +46,12 @@ class CandlepinConnection():
     def __init__(self):
         self.orgapi  = OrganizationAPI()
         self.systemapi  = SystemAPI()
+        self.userapi  = UserAPI()
         self.envapi  = EnvironmentAPI()
+        self.rolesapi  = UserRoleAPI()
+        self.permissionapi  = PermissionAPI()
         # XXX: not sure yet how this works..
-        s = server.KatelloServer('10.16.79.133', '443', 'https', '/headpin')
+        s = server.KatelloServer('10.16.79.145', '443', 'https', '/katello')
         s.set_auth_method(BasicAuthentication('admin', 'admin'))
         server.set_active_server(s)
 
@@ -110,11 +116,21 @@ class CandlepinConnection():
         org = self.orgapi.create(name, label, "no description")
         library = self.envapi.library_by_org(org['label'])
         self.envapi.create(org['label'], "spacewalk_env", "spacewalk_environment", '', library['id'])
+        return org
 
     def deleteOwner(self, name):
         # todo: error handling, not sure if orgapi will handle it
         self.orgapi.delete(name)
 
+    def getUsers(self):
+        return self.userapi.users()
+
+    def createUser(self, username, email):
+        return self.userapi.create(name=username, pw="CHANGEME", email=email, disabled=False, default_environment=None)
+
+    def deleteUser(self, user_id):
+        return self.userapi.delete(user_id=user_id)
+        
     def checkin(self, uuid, checkin_date=None ):
         method = "/consumers/%s/checkin" % self._sanitize(uuid)
         # add the optional date to the url
@@ -176,8 +192,6 @@ class CandlepinConnection():
         # flatten the list
         return list(itertools.chain.from_iterable(consumer_list))
 
-            
-
     def deleteConsumer(self, consumer_uuid):
         self.systemapi.unregister(consumer_uuid)
         # XXX: only for dev use
@@ -187,8 +201,27 @@ class CandlepinConnection():
         url = '/consumers/%s/deletionrecord'
         self._request(url % consumer_id, 'DELETE')
 
-    def getConsumer(self, uuid):
-        return 
+    def getRoles(self, user_id = None):
+        if user_id:
+            return self.userapi.roles(user_id=user_id)
+        else:
+            return self.rolesapi.roles()
+
+    def createOrgAdminRolePermission(self, kt_org_label):
+        role = self.rolesapi.create(name="Org Admin Role for %s" % kt_org_label, description="generated from spacewalk")
+        perm = self.permissionapi.create(roleId = role['id'], name = "Org Admin Permission for %s" % kt_org_label,
+                                         description="generated from spacewalk", type_in="organizations", verbs=None,
+                                         tagIds=None, orgId=kt_org_label, all_tags=True, all_verbs=True)
+
+    def grantOrgAdmin(self, kt_user, kt_org_label):
+        print "granting org admin to %s for user %s" % (kt_org_label, kt_user['username'])
+        oa_role = self.rolesapi.role_by_name(name="Org Admin Role for %s" % kt_org_label)
+        self.userapi.assign_role(user_id=kt_user['id'], role_id=oa_role['id'])
+
+    def ungrantOrgAdmin(self, kt_user, kt_org_label):
+        print "ungranting org admin to %s for user %s" % (kt_org_label, kt_user['username'])
+        oa_role = self.rolesapi.role_by_name(name="Org Admin Role for %s" % kt_org_label)
+        self.userapi.unassign_role(user_id=kt_user['id'], role_id=oa_role['id'])
 
     def getEntitlements(self, uuid):
         url = "/consumers/%s/entitlements" % self._sanitize(uuid)

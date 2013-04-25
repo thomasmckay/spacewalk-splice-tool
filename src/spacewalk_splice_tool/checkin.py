@@ -265,6 +265,7 @@ def update_owners(cpin_client, orgs):
         if katello_label not in owner_labels:
             _LOG.info("creating owner %s (%s), owner is in spacewalk but not katello" % (katello_label, orgs[org_id]))
             cpin_client.createOwner(label=katello_label, name=orgs[org_id])
+            cpin_client.createOrgAdminRolePermission(kt_org_label=katello_label)
 
     # get the owner list again
     owners = cpin_client.getOwners()
@@ -286,6 +287,64 @@ def update_owners(cpin_client, orgs):
             cpin_client.deleteOwner(name=owner_labels_names[owner_label])
             
 
+def update_users(cpin_client, sw_userlist):
+    """
+    ensure that the katello user set matches what's in spacewalk
+    """
+
+    sw_users = {}
+    for sw_user in sw_userlist:
+        sw_users[sw_user['username']] = sw_user
+    kt_users = {}
+    for kt_user in cpin_client.getUsers():
+        kt_users[kt_user['username']] = kt_user
+
+    for sw_username in sw_users.keys():
+        if sw_username not in kt_users.keys():
+            _LOG.info("adding new user %s to katello" % sw_username)
+            created_kt_user = cpin_client.createUser(username=sw_username, email=sw_users[sw_username]['email']) 
+            # do role stuff too
+
+def update_roles(cpin_client, sw_userlist):
+    sw_users = {}
+    for sw_user in sw_userlist:
+        sw_users[sw_user['username']] = sw_user
+    kt_users = {}
+    for kt_user in cpin_client.getUsers():
+        kt_users[kt_user['username']] = kt_user
+
+    for kt_username in kt_users.keys():
+        # if the user isn't also in SW, bail out
+        # NB: we assume kt_users is always be a superset of sw_users
+        if kt_username not in sw_users.keys():
+            print "skipping kt_username %s" % kt_username
+            continue
+
+        # get a flat list of role names, for comparison with sw
+        kt_roles = map(lambda x: x['name'], cpin_client.getRoles(user_id = kt_users[kt_username]['id']))
+        sw_roles = sw_users[kt_username]['role'].split(';')
+
+        print "KT ROLES FROM MOCK: %s" % kt_roles
+
+        # add any new roles
+        for sw_role in sw_roles:
+            # TODO: handle sat admin
+            print "looking for %s" % ("Org Admin Role for satellite-%s" % sw_users[kt_username]['organization_id'])
+            if sw_role == 'Organization Administrator' and \
+                "Org Admin Role for satellite-%s" % sw_users[kt_username]['organization_id'] not in kt_roles:
+                    cpin_client.grantOrgAdmin(
+                        kt_user=kt_users[kt_username], kt_org_label = "satellite-%s" % sw_users[kt_username]['organization_id'])
+
+        # delete any roles in kt but not sw
+        for kt_role in kt_roles:
+            # TODO: handle sat admin
+            if kt_role == "Org Admin Role for satellite-%s" % sw_users[kt_username]['organization_id'] and \
+                "Organization Administrator" not in sw_roles:
+                cpin_client.ungrantOrgAdmin(kt_user=kt_users[kt_username],
+                                kt_org_label = "satellite-%s" % sw_users[kt_username]['organization_id'])
+                
+        
+            
 
 def delete_stale_consumers(cpin_client, consumer_list, system_list):
     """
@@ -379,6 +438,7 @@ def main(sample_json=None):
     org_list = client.get_org_list()
 
     update_owners(cpin_client, org_list)
+    update_users(cpin_client, client.get_user_list())
 
     cpin_consumer_list = cpin_client.getConsumers()
 

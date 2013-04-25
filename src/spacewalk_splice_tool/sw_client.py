@@ -58,3 +58,7 @@ class SpacewalkClient(object):
             orgs[u['organization_id']] = u['organization']
 
         return orgs
+
+    def get_user_list(self):
+        users = self.get_db_output('users')
+        return users
