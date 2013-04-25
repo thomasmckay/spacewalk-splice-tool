@@ -31,7 +31,7 @@ class SpacewalkClient(object):
         # capture data from spacewalk
         process = subprocess.Popen(
                     ['/usr/bin/ssh', '-i', os.environ['SPACEWALK_SSH_KEY'],
-                     os.environ['SPACEWALK_HOST']],
+                     os.environ['SPACEWALK_HOST'],
                      '/usr/bin/spacewalk-report', report_path], 
                     stdout=subprocess.PIPE)
         stdout, stderr = process.communicate()
