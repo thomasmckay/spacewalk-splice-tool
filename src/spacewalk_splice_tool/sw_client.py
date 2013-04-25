@@ -29,7 +29,11 @@ class SpacewalkClient(object):
     
     def get_db_output(self, report_path):
         # capture data from spacewalk
-        process = subprocess.Popen(['/usr/bin/spacewalk-report', report_path], stdout=subprocess.PIPE)
+        process = subprocess.Popen(
+                    ['/usr/bin/ssh', '-i', os.environ['SPACEWALK_SSH_KEY'],
+                     os.environ['SPACEWALK_HOST']],
+                     '/usr/bin/spacewalk-report', report_path], 
+                    stdout=subprocess.PIPE)
         stdout, stderr = process.communicate()
 
         reader = csv.DictReader(stdout.decode('ascii').splitlines())

@@ -1,12 +1,5 @@
 #!/bin/bash
 
 . /etc/sysconfig/spacewalk-sst-sync
-
-SSH=/usr/bin/ssh
-
-$SSH \
-    -i $SPACEWALK_SSH_KEY \
-    $SPACEWALK_HOST \
-    /usr/bin/spacewalk-splice-checkin --spacewalk-sync
-
+/usr/bin/spacewalk-splice-checkin --spacewalk-sync
 exit $?
