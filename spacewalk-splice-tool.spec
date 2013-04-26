@@ -14,10 +14,8 @@ BuildRequires:  python2-devel
 
 Requires: python-certutils
 Requires: python-oauth2
-Requires: spacewalk-reports
 Requires: subscription-manager-migration-data
 Requires: splice-common >= 0.77
-Requires: rhic-serve-common
 Requires: /usr/sbin/crond
 
 %description
@@ -37,15 +35,17 @@ rm -rf %{buildroot}
 pushd src
 %{__python} setup.py install -O1 --skip-build --root %{buildroot}
 popd
-mkdir -p %{buildroot}/%{_sysconfdir}/rhn/splice/
+mkdir -p %{buildroot}/%{_sysconfdir}/sysconfig/
+mkdir -p %{buildroot}/%{_sysconfdir}/splice/
 mkdir -p %{buildroot}/%{_bindir}
 mkdir -p %{buildroot}/%{_var}/log/%{name}
 mkdir -p %{buildroot}/%{_sysconfdir}/cron.d
 mkdir -p %{buildroot}/%{_datadir}/spacewalk/reports/data/
 
 # Configuration
-cp -R etc/rhn/splice/* %{buildroot}/%{_sysconfdir}/rhn/splice/
-cp scripts/spacewalk-splice-tool.cron %{buildroot}/%{_sysconfdir}/cron.d/
+cp -R etc/splice/* %{buildroot}/%{_sysconfdir}/splice/
+cp -R etc/cron.d/* %{buildroot}/%{_sysconfdir}/cron.d/
+cp etc/sysconfig/spacewalk-sst-sync %{buildroot}/%{_sysconfdir}/sysconfig/
 
 # Tools
 cp bin/* %{buildroot}/%{_bindir}/
@@ -65,10 +65,13 @@ rm -rf %{buildroot}
 
 %files
 %defattr(-,root,root,-)
-%{_bindir}/spacewalk-splice-checkin
+%attr(755,root,root) %{_bindir}/spacewalk-splice-checkin
+%attr(755,root,root) %{_bindir}/spacewalk-sst-sync
 %{python_sitelib}/spacewalk_splice_tool*
-%config(noreplace) %{_sysconfdir}/rhn/splice/checkin.conf
-%config(noreplace) %attr(644,root,root) /%{_sysconfdir}/cron.d/spacewalk-splice-tool.cron
+%config(noreplace) %{_sysconfdir}/splice/checkin.conf
+%config(noreplace) %{_sysconfdir}/sysconfig/spacewalk-sst-sync
+%config(noreplace) %attr(644,root,root) %{_sysconfdir}/cron.d/spacewalk-sst-sync
+%config(noreplace) %attr(644,root,root) %{_sysconfdir}/cron.d/splice-sst-sync
 %attr(644,root,root) %{_datadir}/spacewalk/reports/data/cp-export
 %doc LICENSE
 

@@ -1,0 +1,8 @@
+# Configuration for running the spacewalk sync portion of 
+# spacewalk-splice-tool
+
+# Hostname (or IP address) of Spacewalk server.
+SPACEWALK_HOST=
+
+# Path to ssh key to use to connect to $SPACEWALK_HOST.
+SPACEWALK_SSH_KEY=
