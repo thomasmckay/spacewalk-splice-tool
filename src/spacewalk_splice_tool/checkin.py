@@ -316,28 +316,39 @@ def update_roles(cpin_client, sw_userlist):
         # if the user isn't also in SW, bail out
         # NB: we assume kt_users is always be a superset of sw_users
         if kt_username not in sw_users.keys():
+            _LOG.info("skipping role sync for %s, user is not in spacewalk" % kt_username)
             continue
 
         # get a flat list of role names, for comparison with sw
         kt_roles = map(lambda x: x['name'], cpin_client.getRoles(user_id = kt_users[kt_username]['id']))
         sw_roles = sw_users[kt_username]['role'].split(';')
+        sw_user_org = sw_users[kt_username]['organization_id']
 
 
         # add any new roles
         for sw_role in sw_roles:
-            # TODO: handle sat admin
+            _LOG.debug("examining sw role %s for org %s against kt role set %s" % (sw_role, sw_user_org,  kt_roles))
             if sw_role == 'Organization Administrator' and \
-                "Org Admin Role for satellite-%s" % sw_users[kt_username]['organization_id'] not in kt_roles:
+                "Org Admin Role for satellite-%s" % sw_user_org not in kt_roles:
+                    _LOG.info("adding %s to %s org admin role in katello" % (kt_username, "satellite-%s" % sw_user_org))
                     cpin_client.grantOrgAdmin(
-                        kt_user=kt_users[kt_username], kt_org_label = "satellite-%s" % sw_users[kt_username]['organization_id'])
+                        kt_user=kt_users[kt_username], kt_org_label = "satellite-%s" % sw_user_org)
+            elif sw_role == 'Satellite Administrator' and 'Administrator' not in kt_roles:
+                    _LOG.info("adding %s to full admin role in katello" % kt_username)
+                    cpin_client.grantFullAdmin(kt_user=kt_users[kt_username])
 
         # delete any roles in kt but not sw
         for kt_role in kt_roles:
             # TODO: handle sat admin
+            _LOG.debug("examining kt role %s against sw role set %s for org %s" % (kt_role, sw_roles, sw_user_org))
             if kt_role == "Org Admin Role for satellite-%s" % sw_users[kt_username]['organization_id'] and \
                 "Organization Administrator" not in sw_roles:
+                _LOG.info("removing %s from %s org admin role in katello" % (kt_username, "satellite-%s" % sw_user_org))
                 cpin_client.ungrantOrgAdmin(kt_user=kt_users[kt_username],
-                                kt_org_label = "satellite-%s" % sw_users[kt_username]['organization_id'])
+                                kt_org_label = "satellite-%s" % sw_user_org)
+            elif kt_role == 'Administrator' and sw_role != 'Satellite Administrator':
+                    _LOG.info("removing %s from full admin role in katello" % kt_username)
+                    cpin_client.ungrantFullAdmin(kt_user=kt_users[kt_username])
                 
 
 def delete_stale_consumers(cpin_client, consumer_list, system_list):
@@ -427,10 +438,12 @@ def main(sample_json=None):
     _LOG.info("Started capturing system data from spacewalk database and transforming to candlepin model")
     _LOG.info("retrieving data from spacewalk")
     system_details = client.get_system_list()
+    sw_user_list = client.get_user_list()
     org_list = client.get_org_list()
 
     update_owners(cpin_client, org_list)
-    update_users(cpin_client, client.get_user_list())
+    update_users(cpin_client, sw_user_list)
+    update_roles(cpin_client, sw_user_list)
 
     cpin_consumer_list = cpin_client.getConsumers()
 

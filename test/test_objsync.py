@@ -29,11 +29,16 @@ class TestObjectSync:
                         {'username': 'foo', 'id': 2, 'email': 'bazbaz@foo.com'}]
 
         kt_roles_for_org_admin = [{ 'id': 5, 'name': 'Org Admin Role for satellite-1'}]
+        kt_roles_for_full_admin = [{ 'id': 5, 'name': 'Org Admin Role for satellite-1'},
+                                   { 'id': 6, 'name': 'Administrator'}]
 
         def return_role(*args, **kwargs):
             # user id 2 in the katello test data set is foo
             if kwargs['user_id'] == 2:
                 return []
+            # user id 3 in the katello test data set is bazbaz
+            if kwargs['user_id'] == 3:
+                return kt_roles_for_full_admin
             return kt_roles_for_org_admin
 
         self.cp_client = Mock()
@@ -114,10 +119,16 @@ class TestObjectSync:
         result = self.cp_client.grantOrgAdmin.call_args_list
         assert result == expected, "%s does not match expected call set %s" % (result, expected)
 
+        # ensure user "foo" became a full admin
+        self.cp_client.grantFullAdmin.assert_called_once_with(kt_user=user_matcher)
+
         # user "bazbaz" is not an org admin on sat org 1, and needs to get removed from
         # satellite-1 in katello
         user_matcher = TestObjectSync.Matcher(self.user_compare, {'username': 'bazbaz'})
         expected = [call(kt_user=user_matcher, kt_org_label='satellite-1')]
         result = self.cp_client.ungrantOrgAdmin.call_args_list
         assert result == expected, "%s does not match expected call set %s" % (result, expected)
+
+        # ensure user "bazbaz" had full admin rights revoked 
+        self.cp_client.ungrantFullAdmin.assert_called_once_with(kt_user=user_matcher)
         

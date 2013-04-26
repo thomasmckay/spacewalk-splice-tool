@@ -214,14 +214,20 @@ class CandlepinConnection():
                                          tagIds=None, orgId=kt_org_label, all_tags=True, all_verbs=True)
 
     def grantOrgAdmin(self, kt_user, kt_org_label):
-        print "granting org admin to %s for user %s" % (kt_org_label, kt_user['username'])
         oa_role = self.rolesapi.role_by_name(name="Org Admin Role for %s" % kt_org_label)
         self.userapi.assign_role(user_id=kt_user['id'], role_id=oa_role['id'])
 
     def ungrantOrgAdmin(self, kt_user, kt_org_label):
-        print "ungranting org admin to %s for user %s" % (kt_org_label, kt_user['username'])
         oa_role = self.rolesapi.role_by_name(name="Org Admin Role for %s" % kt_org_label)
         self.userapi.unassign_role(user_id=kt_user['id'], role_id=oa_role['id'])
+
+    def grantFullAdmin(self, kt_user):
+        admin_role = self.rolesapi.role_by_name(name="Administrator")
+        self.userapi.assign_role(user_id=kt_user['id'], role_id=admin_role['id'])
+
+    def ungrantFullAdmin(self, kt_user, kt_org_label):
+        admin_role = self.rolesapi.role_by_name(name="Administrator")
+        self.userapi.unassign_role(user_id=kt_user['id'], role_id=admin_role['id'])
 
     def getEntitlements(self, uuid):
         url = "/consumers/%s/entitlements" % self._sanitize(uuid)
