@@ -429,6 +429,33 @@ def build_rcs_data(data):
     return {"objects": data}
 
 
+def get_parent_channel(channel, channels):
+    if channel['parent_channel_label'] is None:
+        return channel
+    else:
+        for c in channels:
+            if c['channel_label'] == channel['parent_channel_label']:
+                return get_parent_channel(c, channels)
+    
+
+def channel_mapping(channels):
+    channel_map = {}
+
+    for channel in channels:
+        parent_channel = get_parent_channel(channel, channels)
+        channel_map[channel['channel_label']] = \
+            parent_channel['channel_label']
+
+    return channel_map
+
+
+def update_system_channel(systems, channels):
+
+    channel_map = channel_mapping(channels)
+    for system in systems:
+        system['software_channel'] = channel_map[system['software_channel']]
+
+
 def spacewalk_sync(options):
     """
     Performs the data capture, translation and checkin to candlepin
@@ -439,8 +466,10 @@ def spacewalk_sync(options):
 
     _LOG.info("Started capturing system data from spacewalk database and transforming to candlepin model")
     _LOG.info("retrieving data from spacewalk")
-    system_details = client.get_system_list()
     sw_user_list = client.get_user_list()
+    system_details = client.get_system_list()
+    channel_details = client.get_channel_list()
+    update_system_channel(system_details, channel_details)
     org_list = client.get_org_list()
 
     update_owners(cpin_client, org_list)

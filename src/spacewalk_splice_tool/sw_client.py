@@ -53,6 +53,9 @@ class SpacewalkClient(object):
     def get_system_list(self):
         return self.get_db_output('cp-export')
 
+    def get_channel_list(self):
+        return self.get_db_output('channels')
+
     def get_org_list(self):
         # we grab the full user list and then extract the orgs. This is not as
         # efficient as just getting the orgs from the db, but we may want to
