@@ -430,12 +430,10 @@ def build_rcs_data(data):
 
 
 def get_parent_channel(channel, channels):
-    if channel['parent_channel_label'] is None:
-        return channel
-    else:
-        for c in channels:
-            if c['channel_label'] == channel['parent_channel_label']:
-                return get_parent_channel(c, channels)
+    for c in channels:
+        if c['new_channel_label'] == channel['original_channel_label']:
+            return get_parent_channel(c, channels)
+    return channel
     
 
 def channel_mapping(channels):
@@ -443,8 +441,8 @@ def channel_mapping(channels):
 
     for channel in channels:
         parent_channel = get_parent_channel(channel, channels)
-        channel_map[channel['channel_label']] = \
-            parent_channel['channel_label']
+        channel_map[channel['new_channel_label']] = \
+            parent_channel['original_channel_label']
 
     return channel_map
 
