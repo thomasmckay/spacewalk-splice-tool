@@ -14,7 +14,6 @@
 
 from datetime import datetime
 from dateutil.tz import tzutc
-import os
 import pprint
 import subprocess
 import sys
@@ -26,14 +25,18 @@ from optparse import OptionParser
 from spacewalk_splice_tool import facts
 from cpin_connect import CandlepinConnection
 
+
 class SpacewalkClient(object):
     
+    def __init__(self, host, ssh_key_path):
+        self.host = host
+        self.ssh_key_path = ssh_key_path
+
     def get_db_output(self, report_path):
         # capture data from spacewalk
         process = subprocess.Popen(
-                    ['/usr/bin/ssh', '-i', os.environ['SPACEWALK_SSH_KEY'],
-                     os.environ['SPACEWALK_HOST'],
-                     '/usr/bin/spacewalk-report', report_path], 
+                    ['/usr/bin/ssh', '-i', self.ssh_key_path,
+                     self.host, '/usr/bin/spacewalk-report', report_path], 
                     stdout=subprocess.PIPE)
         stdout, stderr = process.communicate()
 

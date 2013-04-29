@@ -460,7 +460,8 @@ def spacewalk_sync(options):
     """
     Performs the data capture, translation and checkin to candlepin
     """
-    client = SpacewalkClient()
+    client = SpacewalkClient(config.get('spacewalk', 'host'),
+                             config.get('spacewalk', 'ssh_key_path'))
     cpin_client = CandlepinConnection()
     consumers = []
 

@@ -40,16 +40,13 @@ mkdir -p %{buildroot}/%{_sysconfdir}/splice/
 mkdir -p %{buildroot}/%{_bindir}
 mkdir -p %{buildroot}/%{_var}/log/%{name}
 mkdir -p %{buildroot}/%{_sysconfdir}/cron.d
-mkdir -p %{buildroot}/%{_datadir}/spacewalk/reports/data/
 
 # Configuration
 cp -R etc/splice/* %{buildroot}/%{_sysconfdir}/splice/
 cp -R etc/cron.d/* %{buildroot}/%{_sysconfdir}/cron.d/
-cp etc/sysconfig/spacewalk-sst-sync %{buildroot}/%{_sysconfdir}/sysconfig/
 
 # Tools
 cp bin/* %{buildroot}/%{_bindir}/
-cp scripts/cp-export %{buildroot}/%{_datadir}/spacewalk/reports/data/
 
 # Remove egg info
 rm -rf %{buildroot}/%{python_sitelib}/*.egg-info
@@ -66,13 +63,10 @@ rm -rf %{buildroot}
 %files
 %defattr(-,root,root,-)
 %attr(755,root,root) %{_bindir}/spacewalk-splice-checkin
-%attr(755,root,root) %{_bindir}/spacewalk-sst-sync
 %{python_sitelib}/spacewalk_splice_tool*
 %config(noreplace) %{_sysconfdir}/splice/checkin.conf
-%config(noreplace) %{_sysconfdir}/sysconfig/spacewalk-sst-sync
 %config(noreplace) %attr(644,root,root) %{_sysconfdir}/cron.d/spacewalk-sst-sync
 %config(noreplace) %attr(644,root,root) %{_sysconfdir}/cron.d/splice-sst-sync
-%attr(644,root,root) %{_datadir}/spacewalk/reports/data/cp-export
 %doc LICENSE
 
 %changelog
