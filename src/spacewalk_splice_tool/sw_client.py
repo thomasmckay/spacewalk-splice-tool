@@ -54,7 +54,7 @@ class SpacewalkClient(object):
         return self.get_db_output('cp-export')
 
     def get_channel_list(self):
-        return self.get_db_output('channels')
+        return self.get_db_output('cloned-channels')
 
     def get_org_list(self):
         # we grab the full user list and then extract the orgs. This is not as

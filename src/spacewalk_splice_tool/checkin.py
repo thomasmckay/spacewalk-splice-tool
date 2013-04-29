@@ -451,7 +451,9 @@ def update_system_channel(systems, channels):
 
     channel_map = channel_mapping(channels)
     for system in systems:
-        system['software_channel'] = channel_map[system['software_channel']]
+        system['software_channel'] = channel_map.get(
+                                        system['software_channel'],
+                                        system['software_channel'])
 
 
 def spacewalk_sync(options):
