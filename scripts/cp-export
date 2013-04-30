@@ -1,12 +1,14 @@
 
 synopsis:
 
-    Inventory report
+    System data needed for splice integration for enhanced reporting.
 
 description:
 
     List of systems registered to the server, together with
-    hardware and software information.
+    various hardware and software information used for enhanced reporting.
+    The structure of this report can change as needed in future releases
+    of spacewalk-reports.
 
 columns:
 
