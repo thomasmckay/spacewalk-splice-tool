@@ -54,7 +54,7 @@ class SpacewalkClient(object):
         return retval
 
     def get_system_list(self):
-        return self.get_db_output('cp-export')
+        return self.get_db_output('splice-export')
 
     def get_channel_list(self):
         return self.get_db_output('cloned-channels')
