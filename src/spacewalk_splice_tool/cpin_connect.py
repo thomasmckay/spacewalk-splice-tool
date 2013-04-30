@@ -71,48 +71,6 @@ class CandlepinConnection():
         # Create an OAuth Consumer object 
         self.consumer = oauth.Consumer(CONSUMER_KEY, CONSUMER_SECRET)
 
-
-    def _request(self, rest_method, request_method='GET', info=None, decode_json=True):
-
-        raise Exception("SHOULD NOT BE HERE")
-        # Formulate a OAuth request with the embedded consumer with key/secret pair
-        if rest_method[0] != '/':
-            raise Exception("rest_method must begin with a / char")
-
-        full_url = self.url + rest_method
-
-        if info:
-            body = json.dumps(info)
-        else:
-            body = None
-        
-        oauth_request = oauth.Request.from_consumer_and_token(self.consumer, http_method=request_method, http_url=full_url)
-        # Sign the Request.  This applies the HMAC-SHA1 hash algorithm
-        oauth_request.sign_request(oauth.SignatureMethod_HMAC_SHA1(), self.consumer, None)
-
-        headers = dict(oauth_request.to_header().items() + {'cp-user':'admin'}.items())
-        auth = base64.encodestring( 'admin' + ':' + 'admin' )
-
-        # Actually make the request
-        #self.connection.request(request_method, full_url, headers=headers, body=body) 
-        self.connection.request(request_method, full_url, headers={ 'Authorization' : 'Basic ' + auth }, body=body)
-        # Get the response and read the output
-        response = self.connection.getresponse()
-        output = response.read()
-
-        if response.status == 404:
-            raise NotFoundException()
-        if response.status not in [200, 204]:
-            print output
-            raise Exception("bad response code: %s" % response.status)
-
-        if output:
-            if decode_json:
-                return json.loads(output)
-            else:
-                return output
-        return None
-        
     def getOwners(self):
         return self.orgapi.organizations()
 
@@ -147,14 +105,6 @@ class CandlepinConnection():
     def deleteUser(self, user_id):
         return self.userapi.delete(user_id=user_id)
         
-    def checkin(self, uuid, checkin_date=None ):
-        method = "/consumers/%s/checkin" % self._sanitize(uuid)
-        # add the optional date to the url
-        if checkin_date:
-            method = "%s?checkin_date=%s" % (method,
-                    self._sanitize(checkin_date.isoformat(), plus=True))
-        return self._request(method, 'PUT')
-
     def createConsumer(self, name, facts, installed_products, last_checkin, uuid=None, owner=None):
 
         # two hacks: name should be name, and we should be able to pass installed products up as part of this
@@ -194,12 +144,6 @@ class CandlepinConnection():
         self.systemapi.refresh_subscriptions(cp_uuid)
 
     def getConsumers(self, owner=None):
-        #url = '/consumers/'
-        #if owner:
-        #    method = "%s?owner=%s" % (method, owner)
-
-        #return self._request(url, 'GET')
-
         # the API wants "orgId" but they mean "label"
         org_ids = map(lambda x: x['label'], self.orgapi.organizations())
         consumer_list = []
@@ -213,10 +157,6 @@ class CandlepinConnection():
         self.systemapi.unregister(consumer_uuid)
         # XXX: only for dev use
         self.systemapi.remove_consumer_deletion_record(consumer_uuid)
-
-    def removeDeletionRecord(self, consumer_id):
-        url = '/consumers/%s/deletionrecord'
-        self._request(url % consumer_id, 'DELETE')
 
     def getRoles(self, user_id = None):
         if user_id:
@@ -246,22 +186,9 @@ class CandlepinConnection():
         admin_role = self.rolesapi.role_by_name(name="Administrator")
         self.userapi.unassign_role(user_id=kt_user['id'], role_id=admin_role['id'])
 
-    def getEntitlements(self, uuid):
-        url = "/consumers/%s/entitlements" % self._sanitize(uuid)
-        return self._request(url, 'GET')
-
     def _convert_date(self, dt):
         retval = datetime.strptime(dt, "%Y-%m-%d %H:%M:%S")
         return retval
-
-    def _sanitize(self, urlParam, plus=False):
-        #This is a wrapper around urllib.quote to avoid issues like the one
-        #discussed in http://bugs.python.org/issue9301
-        if plus:
-            retStr = urllib.quote_plus(str(urlParam))
-        else:
-            retStr = urllib.quote(str(urlParam))
-        return retStr
 
     def getRules(self):
         url = "/rules"
