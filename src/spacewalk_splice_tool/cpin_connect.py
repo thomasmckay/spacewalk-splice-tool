@@ -21,6 +21,7 @@ from katello.client.api.provider import ProviderAPI
 from katello.client.api.user import UserAPI
 from katello.client.api.distributor import DistributorAPI
 from katello.client.api.user_role import UserRoleAPI
+from katello.client.api.custom_info import CustomInfoAPI
 from katello.client import server
 from katello.client.server import BasicAuthentication, SSLAuthentication
 from subscription_manager import logutil
@@ -54,6 +55,7 @@ class CandlepinConnection():
         self.permissionapi  = PermissionAPI()
         self.distributorapi  = DistributorAPI()
         self.provapi  = ProviderAPI()
+        self.infoapi  = CustomInfoAPI()
         # XXX: not sure yet how this works..
         s = server.KatelloServer('10.16.79.145', '443', 'https', '/katello')
         s.set_auth_method(BasicAuthentication('admin', 'admin'))
@@ -104,30 +106,33 @@ class CandlepinConnection():
 
     def deleteUser(self, user_id):
         return self.userapi.delete(user_id=user_id)
+
+    def findBySpacewalkID(self, org, spacewalk_id):
+        return self.systemapi.find_by_custom_info(org, 'spacewalk-id', spacewalk_id)
         
-    def createConsumer(self, name, facts, installed_products, last_checkin, uuid=None, owner=None):
+    def createConsumer(self, name, facts, installed_products, last_checkin, sw_uuid=None, owner=None):
 
         # two hacks: name should be name, and we should be able to pass installed products up as part of this
-        consumer = self.systemapi.register(name=uuid, org='satellite-' + owner, environment_id=None,
+        consumer = self.systemapi.register(name=name, org='satellite-' + owner, environment_id=None,
                                             facts=facts, activation_keys=None, cp_type='system')
 
         returned = self.systemapi.update(consumer['uuid'], {'name': consumer['name'], 'installedProducts':installed_products})
 
 
-        # we need to bind and set lastCheckin time
         self.systemapi.checkin(consumer['uuid'], self._convert_date(last_checkin))
         self.systemapi.refresh_subscriptions(consumer['uuid'])
+        self.infoapi.add_custom_info(informable_type='system', informable_id=returned['id'], keyname='spacewalk-id', value=sw_uuid) 
 
         return consumer['uuid']
         
 
     
-    def updateConsumer(self, cp_uuid, facts, installed_products, last_checkin, sw_id, owner=None, guest_uuids=None,
+    def updateConsumer(self, name, cp_uuid, facts, installed_products, last_checkin, sw_id, owner=None, guest_uuids=None,
                         release=None, service_level=None):
         # XXX: need to support altering owner of existing consumer
 
         params = {}
-        params['name'] = sw_id
+        params['name'] = name
         if installed_products is not None:
             params['installedProducts'] = installed_products
         if guest_uuids is not None:

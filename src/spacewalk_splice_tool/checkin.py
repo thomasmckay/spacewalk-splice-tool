@@ -413,19 +413,20 @@ def upload_to_candlepin(consumers, sw_client, cpin_client):
     sw_sysids_from_kt = map(lambda x: x['name'], consumers_from_kt)
 
     for consumer in consumers:
-        if consumer['id'] in sw_sysids_from_kt:
+        if cpin_client.findBySpacewalkID("satellite-%s" % consumer['owner'], consumer['id']):
+        #if consumer['id'] in sw_sysids_from_kt:
             # TODO: fix confusing first arg
             cpin_client.updateConsumer(cp_uuid=sysids_to_uuids[consumer['id']],
                                           sw_id = consumer['id'],
+                                          name = consumer['name'],
                                           facts=consumer['facts'],
                                           installed_products=consumer['installed_products'],
                                           owner=consumer['owner'],
                                           last_checkin=consumer['last_checkin'])
         else:
 
-            # TODO: FIX UUID TO NAME SHENANIGANS IN CPIN_CONNECT
-            uuid = cpin_client.createConsumer(name='unused-field',
-                                                uuid=consumer['id'],
+            uuid = cpin_client.createConsumer(name=consumer['name'],
+                                                sw_uuid=consumer['id'],
                                                 facts=consumer['facts'],
                                                 installed_products=consumer['installed_products'],
                                                 last_checkin=consumer['last_checkin'],
