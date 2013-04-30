@@ -14,6 +14,8 @@ from optparse import OptionParser
 import json
 import pprint
 import time
+import tempfile
+import io
 import os
 import re
 import sys
@@ -44,6 +46,7 @@ def get_product_ids(subscribedchannels, clone_map):
     """
     For the subscribed base and child channels look up product ids
     """
+    print "CHANNELS: %s" % subscribedchannels
     channel_mappings = utils.read_mapping_file(constants.CHANNEL_PRODUCT_ID_MAPPING)
     product_ids = []
     for channel in subscribedchannels.split(';'):
@@ -60,6 +63,7 @@ def get_product_ids(subscribedchannels, clone_map):
     for p in product_ids:
         product_cert = cert_dir.findByProduct(str(p))
         installed_products.append({"productId": product_cert.products[0].id, "productName": product_cert.products[0].name})
+    print "INSTALLED PRODUCTS: %s" % installed_products
     return installed_products
 
 
@@ -266,6 +270,24 @@ def update_owners(cpin_client, orgs):
             _LOG.info("creating owner %s (%s), owner is in spacewalk but not katello" % (katello_label, orgs[org_id]))
             cpin_client.createOwner(label=katello_label, name=orgs[org_id])
             cpin_client.createOrgAdminRolePermission(kt_org_label=katello_label)
+            # if we are not the first org, create a distributor for us in the first org
+            if org_id is not "1":
+                _LOG.info("creating distributor for %s (org id: %s)" % (orgs[org_id], org_id)) 
+                distributor = cpin_client.createDistributor(name="Distributor for %s" % orgs[org_id], root_org='satellite-1')
+                manifest_data = cpin_client.exportManifest(dist_uuid = distributor['uuid'])
+                # katello-cli does some magic that requires an actual file here
+                manifest_file = tempfile.NamedTemporaryFile(suffix='.zip', delete=False)
+                manifest_filename = manifest_file.name
+                _LOG.info("manifest temp file is %s" % manifest_filename)
+                manifest_file.write(manifest_data)
+                manifest_file.close()
+                manifest_file = open(manifest_filename, 'r')
+        
+                # this uses the org name, not label
+                provider = cpin_client.getRedhatProvider(org=orgs[org_id])
+                cpin_client.importManifest(prov_id=provider['id'], file = manifest_file)
+                # explicit close to make sure the temp file gets deleted
+                manifest_file.close()
 
     # get the owner list again
     owners = cpin_client.getOwners()

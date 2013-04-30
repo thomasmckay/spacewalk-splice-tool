@@ -17,7 +17,9 @@ from katello.client.api.organization import OrganizationAPI
 from katello.client.api.environment import EnvironmentAPI
 from katello.client.api.system import SystemAPI
 from katello.client.api.permission import PermissionAPI
+from katello.client.api.provider import ProviderAPI
 from katello.client.api.user import UserAPI
+from katello.client.api.distributor import DistributorAPI
 from katello.client.api.user_role import UserRoleAPI
 from katello.client import server
 from katello.client.server import BasicAuthentication, SSLAuthentication
@@ -50,6 +52,8 @@ class CandlepinConnection():
         self.envapi  = EnvironmentAPI()
         self.rolesapi  = UserRoleAPI()
         self.permissionapi  = PermissionAPI()
+        self.distributorapi  = DistributorAPI()
+        self.provapi  = ProviderAPI()
         # XXX: not sure yet how this works..
         s = server.KatelloServer('10.16.79.145', '443', 'https', '/katello')
         s.set_auth_method(BasicAuthentication('admin', 'admin'))
@@ -111,6 +115,18 @@ class CandlepinConnection():
         
     def getOwners(self):
         return self.orgapi.organizations()
+
+    def createDistributor(self, name, root_org):
+        return self.distributorapi.create(name=name, org=root_org, environment_id=None)
+
+    def exportManifest(self, dist_uuid):
+        return self.distributorapi.export_manifest(distributor_uuid = dist_uuid)
+
+    def importManifest(self, prov_id, file):
+        return self.provapi.import_manifest(provId=prov_id, manifestFile = file)
+
+    def getRedhatProvider(self, org):
+        return self.provapi.provider_by_name(orgName=org, provName="Red Hat")
 
     def createOwner(self, label, name):
         org = self.orgapi.create(name, label, "no description")

@@ -16,6 +16,9 @@ class TestObjectSync:
             return True
         return False
 
+    def true_compare(self, obj1, obj2):
+        return True
+
     def setUp(self):
 
         cp_orgs = [
@@ -51,11 +54,20 @@ class TestObjectSync:
         self.cp_client.getUsers = Mock(return_value=kt_userlist)
         self.cp_client.createOrgAdminRolePermission = Mock()
         self.cp_client.getRoles = Mock(side_effect=return_role)
+        self.cp_client.getRoles = Mock(side_effect=return_role)
+        self.cp_client.createDistributor = Mock(return_value={'uuid':'100100'})
+        self.cp_client.getRedhatProvider = Mock(return_value={'id':'99999'})
+        self.cp_client.exportManifest = Mock(return_value="FILECONTENT")
 
     def test_owner_add(self):
         sw_orgs = {'1': 'foo', '2': 'bar', '3': 'baz'}
         checkin.update_owners(self.cp_client, sw_orgs)
         self.cp_client.createOwner.assert_called_once_with(name='baz', label='satellite-3')
+        self.cp_client.createDistributor.assert_called_once_with(name="Distributor for baz", root_org='satellite-1')
+        self.cp_client.exportManifest.assert_called_once_with(dist_uuid='100100')
+        # TODO: actually check the file contents
+        true_matcher = TestObjectSync.Matcher(self.true_compare, "x")
+        self.cp_client.importManifest.assert_called_once_with(prov_id='99999', file=true_matcher)
         self.cp_client.createOrgAdminRolePermission.assert_called_once_with(kt_org_label='satellite-3')
 
     def test_owner_delete(self):
