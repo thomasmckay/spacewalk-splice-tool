@@ -163,9 +163,10 @@ class CandlepinConnection():
 
         returned = self.systemapi.update(consumer['uuid'], {'name': consumer['name'], 'installedProducts':installed_products})
 
-        print "GOT BACK %s"  % returned
 
         # we need to bind and set lastCheckin time
+        self.systemapi.checkin(consumer['uuid'], self._convert_date(last_checkin))
+        self.systemapi.refresh_subscriptions(consumer['uuid'])
 
         return consumer['uuid']
         
@@ -189,8 +190,8 @@ class CandlepinConnection():
             params['serviceLevel'] = service_level
 
         self.systemapi.update(cp_uuid, params)
-
-        #self.checkin(uuid, self._convert_date(last_checkin))
+        self.systemapi.checkin(cp_uuid, self._convert_date(last_checkin))
+        self.systemapi.refresh_subscriptions(cp_uuid)
 
     def getConsumers(self, owner=None):
         #url = '/consumers/'
