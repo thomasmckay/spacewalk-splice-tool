@@ -414,8 +414,6 @@ def upload_to_candlepin(consumers, sw_client, cpin_client):
 
     for consumer in consumers:
         if cpin_client.findBySpacewalkID("satellite-%s" % consumer['owner'], consumer['id']):
-        #if consumer['id'] in sw_sysids_from_kt:
-            # TODO: fix confusing first arg
             cpin_client.updateConsumer(cp_uuid=sysids_to_uuids[consumer['id']],
                                           sw_id = consumer['id'],
                                           name = consumer['name'],
@@ -424,7 +422,6 @@ def upload_to_candlepin(consumers, sw_client, cpin_client):
                                           owner=consumer['owner'],
                                           last_checkin=consumer['last_checkin'])
         else:
-
             uuid = cpin_client.createConsumer(name=consumer['name'],
                                                 sw_uuid=consumer['id'],
                                                 facts=consumer['facts'],
@@ -501,12 +498,8 @@ def spacewalk_sync(options):
     update_roles(cpin_client, sw_user_list)
 
     cpin_consumer_list = cpin_client.getConsumers()
-
-
     delete_stale_consumers(cpin_client, cpin_consumer_list, system_details)
 
-
-    # build the clone mapping
     _LOG.info("enriching %s spacewalk records" % len(system_details))
     # enrich with engineering product IDs
     clone_mapping = []

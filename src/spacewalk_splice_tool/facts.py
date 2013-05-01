@@ -22,6 +22,8 @@ def translate_sw_facts_to_subsmgr(system_details):
     """
     facts = dict()
     facts['systemid'] = system_details['server_id']
+    # leave this blank in the katello UI
+    facts['distribution.name'] = ""
     facts.update(cpu_facts(system_details))
     facts.update(network_facts(system_details))
     facts.update(memory_facts(system_details))

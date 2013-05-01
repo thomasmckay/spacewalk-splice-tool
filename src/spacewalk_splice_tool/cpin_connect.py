@@ -108,7 +108,11 @@ class CandlepinConnection():
         return self.userapi.delete(user_id=user_id)
 
     def findBySpacewalkID(self, org, spacewalk_id):
-        return self.systemapi.find_by_custom_info(org, 'spacewalk-id', spacewalk_id)
+        result = self.systemapi.find_by_custom_info(org, 'spacewalk-id', spacewalk_id)
+        if len(result) > 1:
+            raise Exception("more than one record found for spacewalk ID %s in org %s!" % (spacewalk_id, org))
+
+        return result
         
     def createConsumer(self, name, facts, installed_products, last_checkin, sw_uuid=None, owner=None):
 
