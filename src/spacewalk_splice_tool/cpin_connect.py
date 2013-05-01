@@ -56,22 +56,10 @@ class CandlepinConnection():
         self.distributorapi  = DistributorAPI()
         self.provapi  = ProviderAPI()
         self.infoapi  = CustomInfoAPI()
-        # XXX: not sure yet how this works..
-        s = server.KatelloServer('10.16.79.145', '443', 'https', '/katello')
-        s.set_auth_method(BasicAuthentication('admin', 'admin'))
+        s = server.KatelloServer(CONFIG.get("katello", "hostname"), CONFIG.get("katello", "port"), 'https', '/katello')
+        s.set_auth_method(BasicAuthentication(CONFIG.get("katello", "admin_user"), CONFIG.get("katello", "admin_pass")))
         server.set_active_server(s)
 
-
-        CONSUMER_KEY = CONFIG.get("candlepin", "oauth_key")
-        CONSUMER_SECRET = CONFIG.get("candlepin", "oauth_secret")
-        # NOTE: callers must add leading slash when appending
-        self.url = CONFIG.get("candlepin", "url")
-        # Setup a standard HTTPSConnection object
-        parsed_url = urlparse.urlparse(self.url)
-        (hostname, port) = parsed_url[1].split(':')
-        self.connection = httplib.HTTPSConnection(hostname, port)
-        # Create an OAuth Consumer object 
-        self.consumer = oauth.Consumer(CONSUMER_KEY, CONSUMER_SECRET)
 
     def getOwners(self):
         return self.orgapi.organizations()
@@ -114,18 +102,22 @@ class CandlepinConnection():
 
         return result
         
-    def createConsumer(self, name, facts, installed_products, last_checkin, sw_uuid=None, owner=None):
+    def createConsumer(self, name, facts, installed_products, last_checkin,
+                        sw_uuid=None, owner=None, spacewalk_server_hostname = None):
 
-        # two hacks: name should be name, and we should be able to pass installed products up as part of this
+        # there are six calls here! we need to work with katello to send all this stuff up at once
         consumer = self.systemapi.register(name=name, org='satellite-' + owner, environment_id=None,
                                             facts=facts, activation_keys=None, cp_type='system')
 
         returned = self.systemapi.update(consumer['uuid'], {'name': consumer['name'], 'installedProducts':installed_products})
 
-
         self.systemapi.checkin(consumer['uuid'], self._convert_date(last_checkin))
         self.systemapi.refresh_subscriptions(consumer['uuid'])
-        self.infoapi.add_custom_info(informable_type='system', informable_id=returned['id'], keyname='spacewalk-id', value=sw_uuid) 
+
+        self.infoapi.add_custom_info(informable_type='system', informable_id=returned['id'],
+                                        keyname='spacewalk-id', value=sw_uuid) 
+        self.infoapi.add_custom_info(informable_type='system', informable_id=returned['id'],
+                                        keyname='spacewalk-server-hostname', value=spacewalk_server_hostname) 
 
         return consumer['uuid']
         
@@ -148,6 +140,7 @@ class CandlepinConnection():
         if service_level is not None:
             params['serviceLevel'] = service_level
 
+        # three rest calls, just one would be better
         self.systemapi.update(cp_uuid, params)
         self.systemapi.checkin(cp_uuid, self._convert_date(last_checkin))
         self.systemapi.refresh_subscriptions(cp_uuid)

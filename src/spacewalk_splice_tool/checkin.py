@@ -405,7 +405,6 @@ def upload_to_candlepin(consumers, sw_client, cpin_client):
     Uploads consumer data to candlepin
     """
 
-    # XXX: confusing
     consumers_from_kt = cpin_client.getConsumers()
     sysids_to_uuids = {}
     for consumer in consumers_from_kt:
@@ -427,7 +426,8 @@ def upload_to_candlepin(consumers, sw_client, cpin_client):
                                                 facts=consumer['facts'],
                                                 installed_products=consumer['installed_products'],
                                                 last_checkin=consumer['last_checkin'],
-                                                owner=consumer['owner'])
+                                                owner=consumer['owner'],
+                                                spacewalk_server_hostname=CONFIG.get('spacewalk', 'host'))
 
 def get_checkin_config():
     return {
