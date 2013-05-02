@@ -60,7 +60,8 @@ def cpu_facts(cpuinfo):
     cpu_facts_dict['lscpu.on-line_cpu(s)_list'] = ""
     cpu_facts_dict['lscpu.byte_order'] = ""
     cpu_facts_dict['lscpu.cpu_socket(s)'] = cpu_socket_count
-    #cpu_facts_dict['lscpu.core(s)_per_socket'] = ""
+    cpu_facts_dict['lscpu.core(s)_per_socket'] = \
+        int(cpu_count) / int(cpu_socket_count)
     cpu_facts_dict['lscpu.hypervisor_vendor'] = ""
     #cpu_facts_dict['lscpu.numa_node0_cpu(s)'] = ""
     cpu_facts_dict['lscpu.bogomips'] = ""
