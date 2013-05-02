@@ -1,9 +1,25 @@
-from spacewalk_splice_tool import checkin
-from spacewalk_splice_tool.cpin_connect import CandlepinConnection
+# -*- coding: utf-8 -*-
+#
+# Copyright © 2014 Red Hat, Inc.
+#
+# This software is licensed to you under the GNU General Public
+# License as published by the Free Software Foundation; either version
+# 2 of the License (GPLv2) or (at your option) any later version.
+# There is NO WARRANTY for this software, express or implied,
+# including the implied warranties of MERCHANTABILITY,
+# NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
+# have received a copy of GPLv2 along with this software; if not, see
+# http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
+
 from mock import Mock, call
 
+from spacewalk_splice_tool import checkin
+from spacewalk_splice_tool.cpin_connect import CandlepinConnection
 
-class TestObjectSync:
+from base import SpliceToolTest
+
+
+class TestObjectSync(SpliceToolTest):
     class Matcher(object):
         def __init__(self, compare, some_obj):
             self.compare = compare
@@ -20,6 +36,7 @@ class TestObjectSync:
         return True
 
     def setUp(self):
+        super(TestObjectSync, self).setUp()
 
         cp_orgs = [
                    {'name': 'bar org', 'label': 'satellite-2',   'id': '9',   'description': 'no description'},
