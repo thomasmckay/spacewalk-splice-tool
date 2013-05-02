@@ -47,7 +47,11 @@ def get_product_ids(subscribedchannels, clone_map):
     For the subscribed base and child channels look up product ids
     """
     print "CHANNELS: %s" % subscribedchannels
-    channel_mappings = utils.read_mapping_file(constants.CHANNEL_PRODUCT_ID_MAPPING)
+    mapping_file = os.path.join(
+        os.path.join(constants.CHANNEL_PRODUCT_ID_MAPPING_DIR,
+                     utils.getRelease()),
+        constants.CHANNEL_PRODUCT_ID_MAPPING_FILE)
+    channel_mappings = utils.read_mapping_file(mapping_file)
     product_ids = []
     for channel in subscribedchannels.split(';'):
         # grab the origin
