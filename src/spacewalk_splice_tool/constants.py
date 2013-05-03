@@ -18,4 +18,4 @@ SPLICE_CHECKIN_CONFIG = SPLICE_CONFIG_DIR + 'checkin.conf'
 
 CHANNEL_PRODUCT_ID_MAPPING_DIR = "/usr/share/rhsm/product/"
 
-CHANNEL_PRODUCT_ID_MAPPING_FILE = "/channel-cert-mapping.txt"
+CHANNEL_PRODUCT_ID_MAPPING_FILE = "channel-cert-mapping.txt"
