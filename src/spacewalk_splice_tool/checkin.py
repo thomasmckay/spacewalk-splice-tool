@@ -38,7 +38,7 @@ from splice.common.connect import BaseConnection
 import splice.common.utils
 
 _LOG = logging.getLogger(__name__)
-CONFIG = utils.cfg_init(config_file=constants.SPLICE_CHECKIN_CONFIG)
+CONFIG = None
 
 SAT_OWNER_PREFIX = 'satellite-'
 
@@ -383,7 +383,7 @@ def delete_stale_consumers(cpin_client, consumer_list, system_list):
     up any systems that were deleted in spacewalk.
     """
 
-    system_id_list = map(lambda x: x['server_id'], system_list)
+    system_id_list = map(lambda x: x['name'], system_list)
 
     owner_labels = {}
     owner_list = cpin_client.getOwners()
@@ -559,6 +559,9 @@ def splice_sync(options):
 
 
 def main(options):
+
+    global CONFIG
+    CONFIG = utils.cfg_init(config_file=constants.SPLICE_CHECKIN_CONFIG)
 
     start_time = time.time()
     _LOG.info("run starting")
