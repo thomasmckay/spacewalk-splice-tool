@@ -49,7 +49,7 @@ def get_product_ids(subscribedchannels, clone_map):
     print "CHANNELS: %s" % subscribedchannels
     mapping_file = os.path.join(
         os.path.join(constants.CHANNEL_PRODUCT_ID_MAPPING_DIR,
-                     utils.getRelease()),
+                     utils.get_release()),
         constants.CHANNEL_PRODUCT_ID_MAPPING_FILE)
     channel_mappings = utils.read_mapping_file(mapping_file)
     product_ids = []
@@ -220,7 +220,7 @@ def upload_to_rcs(rules_data, pool_data, product_data, mpu_data, sample_json=Non
         _LOG.info("POST to %s: received %s %s" % (url, status, body))
         if status != 204:
             _LOG.error("Splice server metadata was not uploaded correctly")
-            utils.systemExit(os.EX_DATAERR, "Error uploading splice server data")
+            utils.system_exit(os.EX_DATAERR, "Error uploading splice server data")
 
         # upload the data to rcs
         url = "/v1/marketingproductusage/"
@@ -228,7 +228,7 @@ def upload_to_rcs(rules_data, pool_data, product_data, mpu_data, sample_json=Non
         _LOG.info("POST to %s: received %s %s" % (url, status, body))
         if status != 202 and status != 204:
             _LOG.error("MarketingProductUsage data was not uploaded correctly")
-            utils.systemExit(os.EX_DATAERR, "Error uploading marketing product usage data")
+            utils.system_exit(os.EX_DATAERR, "Error uploading marketing product usage data")
 
         # Upload Rules
         #url = "/v1/rules/"
@@ -236,7 +236,7 @@ def upload_to_rcs(rules_data, pool_data, product_data, mpu_data, sample_json=Non
         #_LOG.info("POST to %s: received %s %s" % (url, status, body))
         #if status != 202 and status != 204:
         #    _LOG.error("Rules data was not uploaded correctly")
-        #    utils.systemExit(os.EX_DATAERR, "Error uploading rules data")
+        #    utils.system_exit(os.EX_DATAERR, "Error uploading rules data")
         #
         ## Upload Pools
         #url = "/v1/pool/"
@@ -244,7 +244,7 @@ def upload_to_rcs(rules_data, pool_data, product_data, mpu_data, sample_json=Non
         #_LOG.info("POST to %s: received %s %s" % (url, status, body))
         #if status != 202 and status != 204:
         #    _LOG.error("Pool data was not uploaded correctly")
-        #    utils.systemExit(os.EX_DATAERR, "Error uploading pool data")
+        #    utils.system_exit(os.EX_DATAERR, "Error uploading pool data")
         #
         ## Upload Products
         #url = "/v1/product/"
@@ -252,12 +252,12 @@ def upload_to_rcs(rules_data, pool_data, product_data, mpu_data, sample_json=Non
         #_LOG.info("POST to %s: received %s %s" % (url, status, body))
         #if status != 202 and status != 204:
         #    _LOG.error("Products data was not uploaded correctly")
-        #    utils.systemExit(os.EX_DATAERR, "Error uploading products data")
+        #    utils.system_exit(os.EX_DATAERR, "Error uploading products data")
 
-        utils.systemExit(os.EX_OK, "Upload was successful")
+        utils.system_exit(os.EX_OK, "Upload was successful")
     except Exception, e:
         _LOG.error("Error uploading MarketingProductUsage Data; Error: %s" % e)
-        utils.systemExit(os.EX_DATAERR, "Error uploading; Error: %s" % e)
+        utils.system_exit(os.EX_DATAERR, "Error uploading; Error: %s" % e)
 
 def update_owners(cpin_client, orgs):
     """
@@ -417,7 +417,7 @@ def upload_to_candlepin(consumers, sw_client, cpin_client):
 
     for consumer in consumers:
         if cpin_client.findBySpacewalkID("satellite-%s" % consumer['owner'], consumer['id']):
-            cpin_client.updateConsumer(cp_uuid=sysids_to_uuids[consumer['id']],
+            cpin_client.updateConsumer(cp_uuid=sysids_to_uuids[consumer['name']],
                                           sw_id = consumer['id'],
                                           name = consumer['name'],
                                           facts=consumer['facts'],

@@ -16,7 +16,7 @@ import csv
 import re
 import sys
 
-def systemExit(errcode, message=None):
+def system_exit(errcode, message=None):
     if message:
         sys.stderr.write(str(message)+'\n')
     sys.exit(errcode)
@@ -40,7 +40,7 @@ def cfg_init(config_file=None, reinit=False):
     CONFIG.read(config_file)
     return CONFIG
 
-def getRelease():
+def get_release():
     f = open('/etc/redhat-release')
     lines = f.readlines()
     f.close()
