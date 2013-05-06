@@ -81,12 +81,19 @@ class CheckinTest(SpliceToolTest):
         mocked_cp_client.getConsumers.return_value = consumer_list
         
         options = Mock()
+        delete_stale_consumers = self.mock(checkin, 'delete_stale_consumers')
+        upload_to_cp = self.mock(checkin, 'upload_to_candlepin')
+
         checkin.spacewalk_sync(options)
 
         # base channel was set to RH channel
         self.assertEquals('rhel-x86_64-server-6',
                           system_list[1]['software_channel'])
-
+        self.assertTrue(delete_stale_consumers.called)
+        self.assertTrue(system_list[0].has_key('installed_products'))
+        self.assertTrue(system_list[1].has_key('installed_products'))
+        self.assertTrue(upload_to_cp.called)
+        self.assertEquals(2, len(upload_to_cp.call_args[0][0]))
 
 
 user_list = [{'username': 'admin', 
