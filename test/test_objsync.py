@@ -101,8 +101,10 @@ class TestObjectSync(SpliceToolTest):
 
     def test_system_remove(self):
         sw_system_list = [
-                            { 'server_id': '100' },
-                            { 'server_id': '101' },
+                            { 'server_id': '100',
+                              'name': '100' },
+                            { 'server_id': '101',
+                              'name': '101' },
                          ]
 
         kt_consumer_list = [
