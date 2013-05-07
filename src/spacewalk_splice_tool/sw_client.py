@@ -23,7 +23,6 @@ import traceback
 from optparse import OptionParser
 
 from spacewalk_splice_tool import facts
-from cpin_connect import CandlepinConnection
 
 
 class SpacewalkClient(object):

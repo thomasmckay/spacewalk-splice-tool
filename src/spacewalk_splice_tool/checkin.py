@@ -22,7 +22,7 @@ import logging
 
 from spacewalk_splice_tool import facts, connect, utils, constants
 from spacewalk_splice_tool.sw_client import SpacewalkClient
-from spacewalk_splice_tool.cpin_connect import CandlepinConnection, NotFoundException
+from spacewalk_splice_tool.katello_connect import KatelloConnection, NotFoundException
 from certutils import certutils
 from datetime import datetime
 from dateutil.tz import tzutc
@@ -106,7 +106,7 @@ def _get_splice_server_uuid():
 
 def transform_to_rcs(consumer):
     """
-    convert a candlepin consumer into something parsable by RCS
+    convert a katello consumer into something parsable by RCS
     as a MarketingProductUsage obj
     """
 
@@ -128,11 +128,11 @@ def transform_to_rcs(consumer):
 
 def transform_to_consumers(system_details):
     """
-    Convert system details to candlepin consumers. Note that this is an ersatz
+    Convert system details to katello consumers. Note that this is an ersatz
     consumer that gets processed again later, you cannot pass this directly
-    into candlepin.
+    into katello.
     """
-    _LOG.info("Translating system details to candlepin consumers")
+    _LOG.info("Translating system details to katello consumers")
     consumer_list = []
     for details in system_details:
         facts_data = facts.translate_sw_facts_to_subsmgr(details)
@@ -163,17 +163,17 @@ def build_server_metadata(cfg):
     # wrap obj for consumption by upstream rcs
     return {"objects": [server_metadata]}
 
-def get_candlepin_consumers():
-    candlepin_conn = CandlepinConnection()
-    return candlepin_conn.getConsumers()
+def get_katello_consumers():
+    katello_conn = KatelloConnection()
+    return katello_conn.getConsumers()
 
-def get_candlepin_entitlements(uuid):
-    candlepin_conn = CandlepinConnection()
-    return candlepin_conn.getEntitlements(uuid)
+def get_katello_entitlements(uuid):
+    katello_conn = KatelloConnection()
+    return katello_conn.getEntitlements(uuid)
 
-def get_candlepin_consumer_facts(uuid):
-    candlepin_conn = CandlepinConnection()
-    return candlepin_conn.getConsumer(uuid)['facts']
+def get_katello_consumer_facts(uuid):
+    katello_conn = KatelloConnection()
+    return katello_conn.getConsumer(uuid)['facts']
 
 def write_sample_json(sample_json, rules_data, pool_data, product_data, mpu_data, splice_server_data):
     def write_file(file_name, data):
@@ -256,12 +256,12 @@ def upload_to_rcs(rules_data, pool_data, product_data, mpu_data, sample_json=Non
         _LOG.error("Error uploading MarketingProductUsage Data; Error: %s" % e)
         utils.system_exit(os.EX_DATAERR, "Error uploading; Error: %s" % e)
 
-def update_owners(cpin_client, orgs):
+def update_owners(katello_client, orgs):
     """
-    ensure that the candlepin owner set matches what's in spacewalk
+    ensure that the katello owner set matches what's in spacewalk
     """
 
-    owners = cpin_client.getOwners()
+    owners = katello_client.getOwners()
     org_ids = orgs.keys()
     owner_labels = map(lambda x: x['label'], owners)
 
@@ -269,13 +269,13 @@ def update_owners(cpin_client, orgs):
         katello_label = SAT_OWNER_PREFIX + org_id
         if katello_label not in owner_labels:
             _LOG.info("creating owner %s (%s), owner is in spacewalk but not katello" % (katello_label, orgs[org_id]))
-            cpin_client.createOwner(label=katello_label, name=orgs[org_id])
-            cpin_client.createOrgAdminRolePermission(kt_org_label=katello_label)
+            katello_client.createOwner(label=katello_label, name=orgs[org_id])
+            katello_client.createOrgAdminRolePermission(kt_org_label=katello_label)
             # if we are not the first org, create a distributor for us in the first org
             if org_id is not "1":
                 _LOG.info("creating distributor for %s (org id: %s)" % (orgs[org_id], org_id)) 
-                distributor = cpin_client.createDistributor(name="Distributor for %s" % orgs[org_id], root_org='satellite-1')
-                manifest_data = cpin_client.exportManifest(dist_uuid = distributor['uuid'])
+                distributor = katello_client.createDistributor(name="Distributor for %s" % orgs[org_id], root_org='satellite-1')
+                manifest_data = katello_client.exportManifest(dist_uuid = distributor['uuid'])
                 # katello-cli does some magic that requires an actual file here
                 manifest_file = tempfile.NamedTemporaryFile(suffix='.zip', delete=False)
                 manifest_filename = manifest_file.name
@@ -285,13 +285,13 @@ def update_owners(cpin_client, orgs):
                 manifest_file = open(manifest_filename, 'r')
         
                 # this uses the org name, not label
-                provider = cpin_client.getRedhatProvider(org=orgs[org_id])
-                cpin_client.importManifest(prov_id=provider['id'], file = manifest_file)
+                provider = katello_client.getRedhatProvider(org=orgs[org_id])
+                katello_client.importManifest(prov_id=provider['id'], file = manifest_file)
                 # explicit close to make sure the temp file gets deleted
                 manifest_file.close()
 
     # get the owner list again
-    owners = cpin_client.getOwners()
+    owners = katello_client.getOwners()
     # build up a label->name mapping this time
     owner_labels_names = {}
     for owner in owners:
@@ -307,10 +307,10 @@ def update_owners(cpin_client, orgs):
         kt_org_id = owner_label[len(SAT_OWNER_PREFIX):]
         if kt_org_id not in org_ids:
             _LOG.info("removing owner %s (name: %s), owner is no longer in spacewalk" % (owner_label, owner_labels_names[owner_label]))
-            cpin_client.deleteOwner(name=owner_labels_names[owner_label])
+            katello_client.deleteOwner(name=owner_labels_names[owner_label])
             
 
-def update_users(cpin_client, sw_userlist):
+def update_users(katello_client, sw_userlist):
     """
     ensure that the katello user set matches what's in spacewalk
     """
@@ -319,20 +319,20 @@ def update_users(cpin_client, sw_userlist):
     for sw_user in sw_userlist:
         sw_users[sw_user['username']] = sw_user
     kt_users = {}
-    for kt_user in cpin_client.getUsers():
+    for kt_user in katello_client.getUsers():
         kt_users[kt_user['username']] = kt_user
 
     for sw_username in sw_users.keys():
         if sw_username not in kt_users.keys():
             _LOG.info("adding new user %s to katello" % sw_username)
-            created_kt_user = cpin_client.createUser(username=sw_username, email=sw_users[sw_username]['email']) 
+            created_kt_user = katello_client.createUser(username=sw_username, email=sw_users[sw_username]['email']) 
 
-def update_roles(cpin_client, sw_userlist):
+def update_roles(katello_client, sw_userlist):
     sw_users = {}
     for sw_user in sw_userlist:
         sw_users[sw_user['username']] = sw_user
     kt_users = {}
-    for kt_user in cpin_client.getUsers():
+    for kt_user in katello_client.getUsers():
         kt_users[kt_user['username']] = kt_user
 
     for kt_username in kt_users.keys():
@@ -343,7 +343,7 @@ def update_roles(cpin_client, sw_userlist):
             continue
 
         # get a flat list of role names, for comparison with sw
-        kt_roles = map(lambda x: x['name'], cpin_client.getRoles(user_id = kt_users[kt_username]['id']))
+        kt_roles = map(lambda x: x['name'], katello_client.getRoles(user_id = kt_users[kt_username]['id']))
         sw_roles = sw_users[kt_username]['role'].split(';')
         sw_user_org = sw_users[kt_username]['organization_id']
 
@@ -354,11 +354,11 @@ def update_roles(cpin_client, sw_userlist):
             if sw_role == 'Organization Administrator' and \
                 "Org Admin Role for satellite-%s" % sw_user_org not in kt_roles:
                     _LOG.info("adding %s to %s org admin role in katello" % (kt_username, "satellite-%s" % sw_user_org))
-                    cpin_client.grantOrgAdmin(
+                    katello_client.grantOrgAdmin(
                         kt_user=kt_users[kt_username], kt_org_label = "satellite-%s" % sw_user_org)
             elif sw_role == 'Satellite Administrator' and 'Administrator' not in kt_roles:
                     _LOG.info("adding %s to full admin role in katello" % kt_username)
-                    cpin_client.grantFullAdmin(kt_user=kt_users[kt_username])
+                    katello_client.grantFullAdmin(kt_user=kt_users[kt_username])
 
         # delete any roles in kt but not sw
         for kt_role in kt_roles:
@@ -367,23 +367,23 @@ def update_roles(cpin_client, sw_userlist):
             if kt_role == "Org Admin Role for satellite-%s" % sw_users[kt_username]['organization_id'] and \
                 "Organization Administrator" not in sw_roles:
                 _LOG.info("removing %s from %s org admin role in katello" % (kt_username, "satellite-%s" % sw_user_org))
-                cpin_client.ungrantOrgAdmin(kt_user=kt_users[kt_username],
+                katello_client.ungrantOrgAdmin(kt_user=kt_users[kt_username],
                                 kt_org_label = "satellite-%s" % sw_user_org)
             elif kt_role == 'Administrator' and sw_role != 'Satellite Administrator':
                     _LOG.info("removing %s from full admin role in katello" % kt_username)
-                    cpin_client.ungrantFullAdmin(kt_user=kt_users[kt_username])
+                    katello_client.ungrantFullAdmin(kt_user=kt_users[kt_username])
                 
 
-def delete_stale_consumers(cpin_client, consumer_list, system_list):
+def delete_stale_consumers(katello_client, consumer_list, system_list):
     """
-    removes consumers that are in candlepin and not spacewalk. This is to clean
+    removes consumers that are in katello and not spacewalk. This is to clean
     up any systems that were deleted in spacewalk.
     """
 
     system_id_list = map(lambda x: x['name'], system_list)
 
     owner_labels = {}
-    owner_list = cpin_client.getOwners()
+    owner_list = katello_client.getOwners()
     for owner in owner_list:
         owner_labels[owner['id']] = owner['label']
     
@@ -400,14 +400,14 @@ def delete_stale_consumers(cpin_client, consumer_list, system_list):
     _LOG.info("removing %s consumers that are no longer in spacewalk" % len(consumers_to_delete))
     for consumer in consumers_to_delete:
         _LOG.info("removed consumer %s" % consumer['name'])
-        cpin_client.deleteConsumer(consumer['uuid'])
+        katello_client.deleteConsumer(consumer['uuid'])
 
-def upload_to_candlepin(consumers, sw_client, cpin_client):
+def upload_to_katello(consumers, sw_client, katello_client):
     """
-    Uploads consumer data to candlepin
+    Uploads consumer data to katello
     """
 
-    consumers_from_kt = cpin_client.getConsumers()
+    consumers_from_kt = katello_client.getConsumers()
     sysids_to_uuids = {}
     for consumer in consumers_from_kt:
         sysids_to_uuids[consumer['name']] = consumer['uuid']
@@ -417,8 +417,8 @@ def upload_to_candlepin(consumers, sw_client, cpin_client):
     for consumer in consumers:
         if (done % 10) == 0:
             _LOG.info("%s consumers uploaded so far." % done)
-        if cpin_client.findBySpacewalkID("satellite-%s" % consumer['owner'], consumer['id']):
-            cpin_client.updateConsumer(cp_uuid=sysids_to_uuids[consumer['name']],
+        if katello_client.findBySpacewalkID("satellite-%s" % consumer['owner'], consumer['id']):
+            katello_client.updateConsumer(cp_uuid=sysids_to_uuids[consumer['name']],
                                           sw_id = consumer['id'],
                                           name = consumer['name'],
                                           facts=consumer['facts'],
@@ -426,7 +426,7 @@ def upload_to_candlepin(consumers, sw_client, cpin_client):
                                           owner=consumer['owner'],
                                           last_checkin=consumer['last_checkin'])
         else:
-            uuid = cpin_client.createConsumer(name=consumer['name'],
+            uuid = katello_client.createConsumer(name=consumer['name'],
                                                 sw_uuid=consumer['id'],
                                                 facts=consumer['facts'],
                                                 installed_products=consumer['installed_products'],
@@ -485,12 +485,12 @@ def update_system_channel(systems, channels):
 
 def spacewalk_sync(options):
     """
-    Performs the data capture, translation and checkin to candlepin
+    Performs the data capture, translation and checkin to katello
     """
     _LOG.info("Started capturing system data from spacewalk")
     client = SpacewalkClient(CONFIG.get('spacewalk', 'host'),
                              CONFIG.get('spacewalk', 'ssh_key_path'))
-    cpin_client = CandlepinConnection()
+    katello_client = KatelloConnection()
     consumers = []
 
     _LOG.info("retrieving data from spacewalk")
@@ -500,12 +500,12 @@ def spacewalk_sync(options):
     update_system_channel(system_details, channel_details)
     org_list = client.get_org_list()
 
-    update_owners(cpin_client, org_list)
-    update_users(cpin_client, sw_user_list)
-    update_roles(cpin_client, sw_user_list)
+    update_owners(katello_client, org_list)
+    update_users(katello_client, sw_user_list)
+    update_roles(katello_client, sw_user_list)
 
-    cpin_consumer_list = cpin_client.getConsumers()
-    delete_stale_consumers(cpin_client, cpin_consumer_list, system_details)
+    katello_consumer_list = katello_client.getConsumers()
+    delete_stale_consumers(katello_client, katello_consumer_list, system_details)
 
     _LOG.info("adding installed products to %s spacewalk records" % len(system_details))
     # enrich with engineering product IDs
@@ -514,43 +514,43 @@ def spacewalk_sync(options):
             details.update({'installed_products' : get_product_ids(details['software_channel'],
                             clone_mapping)}), system_details)
 
-    # convert the system details to candlepin consumers
+    # convert the system details to katello consumers
     consumers.extend(transform_to_consumers(system_details))
     _LOG.info("found %s systems to upload into katello" % len(consumers))
     _LOG.info("uploading to katello...")
-    upload_to_candlepin(consumers, client, cpin_client)
+    upload_to_katello(consumers, client, katello_client)
     _LOG.info("upload completed")
 
 
 def splice_sync(options):
     """
-    Syncs data from candlepin to splice
+    Syncs data from katello to splice
     """
     _LOG.info("Started syncing system data to splice")
-    # now pull put out of candlepin, and into rcs!
-    cpin_consumers = get_candlepin_consumers()
-    cpin_client = CandlepinConnection()
+    # now pull put out of katello, and into rcs!
+    katello_consumers = get_katello_consumers()
+    katello_client = KatelloConnection()
     _LOG.info("calculating marketing product usage")
 
     # create the base marketing usage list
-    rcs_mkt_usage = map(transform_to_rcs, cpin_consumers)
+    rcs_mkt_usage = map(transform_to_rcs, katello_consumers)
     # enrich with facts
     map(lambda rmu : 
             rmu.update(
                 {'facts': transform_facts_to_rcs(
-                            get_candlepin_consumer_facts(
+                            get_katello_consumer_facts(
                                 rmu['instance_identifier']))}), rcs_mkt_usage)
     # enrich with product usage info
     map(lambda rmu : 
             rmu.update(
                 {'product_info': transform_entitlements_to_rcs(
-                                    get_candlepin_entitlements(
+                                    get_katello_entitlements(
                                         rmu['instance_identifier']))}), 
                                         rcs_mkt_usage)
     
-    #rules_data = cpin_client.getRules()
-    #pool_data = cpin_client.getPools()
-    #product_data = cpin_client.getProducts()
+    #rules_data = katello_client.getRules()
+    #pool_data = katello_client.getPools()
+    #product_data = katello_client.getProducts()
 
     _LOG.info("uploading to splice...")
     upload_to_rcs(rules_data=build_rcs_data([rules_data]), 

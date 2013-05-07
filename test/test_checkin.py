@@ -17,7 +17,6 @@ from mock import Mock, patch
 from base import SpliceToolTest
 
 from spacewalk_splice_tool import checkin
-from spacewalk_splice_tool import cpin_connect
 from spacewalk_splice_tool import sw_client
 
 
@@ -65,7 +64,7 @@ class CheckinTest(SpliceToolTest):
         mocked_sw_client_class = self.mock(checkin, 'SpacewalkClient')
         mocked_sw_client = Mock()
         mocked_sw_client_class.return_value = mocked_sw_client
-        mocked_cp_client_class = self.mock(checkin, 'CandlepinConnection')
+        mocked_cp_client_class = self.mock(checkin, 'KatelloConnection')
         mocked_cp_client = Mock()
         mocked_cp_client_class.return_value = mocked_cp_client
 
@@ -82,7 +81,7 @@ class CheckinTest(SpliceToolTest):
         
         options = Mock()
         delete_stale_consumers = self.mock(checkin, 'delete_stale_consumers')
-        upload_to_cp = self.mock(checkin, 'upload_to_candlepin')
+        upload_to_cp = self.mock(checkin, 'upload_to_katello')
 
         checkin.spacewalk_sync(options)
 

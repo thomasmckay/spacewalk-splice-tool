@@ -44,7 +44,7 @@ logutil.init_logger()
 class NotFoundException():
     pass
 
-class CandlepinConnection():
+class KatelloConnection():
 
     def __init__(self):
         self.orgapi  = OrganizationAPI()
@@ -274,18 +274,18 @@ class CandlepinConnection():
         return pools
 
 if __name__ == '__main__':
-    cc = CandlepinConnection()
-    print cc.getOwners()
-    print cc.createOwner("foo", "foo name")
-    print cc.deleteOwner("foo")
-    print cc.getOwners()
+    kc = KatelloConnection()
+    print kc.getOwners()
+    print kc.createOwner("foo", "foo name")
+    print kc.deleteOwner("foo")
+    print kc.getOwners()
 
-    print cc.createConsumer("foo", {}, [], '2009-01-01 05:01:01', uuid="123", owner='admin')
-    print cc.unregisterConsumers(["123"])
-    print cc.removeDeletionRecord("123")
+    print kc.createConsumer("foo", {}, [], '2009-01-01 05:01:01', uuid="123", owner='admin')
+    print kc.unregisterConsumers(["123"])
+    print kc.removeDeletionRecord("123")
 
-    print "Rules = %s" % (cc.getRules())
-    print "Pools = %s" % (cc.getPools())
-    print "Product = %s" % (cc.getProducts())
+    print "Rules = %s" % (kc.getRules())
+    print "Pools = %s" % (kc.getPools())
+    print "Product = %s" % (kc.getProducts())
 
 

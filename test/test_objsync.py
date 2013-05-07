@@ -14,7 +14,6 @@
 from mock import Mock, call
 
 from spacewalk_splice_tool import checkin
-from spacewalk_splice_tool.cpin_connect import CandlepinConnection
 
 from base import SpliceToolTest
 
