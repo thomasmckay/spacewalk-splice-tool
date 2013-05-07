@@ -101,7 +101,8 @@ def network_facts(nwkinfo):
         nwk_facts_dict['net.interface.' + iface + '.ipv4_address'] = addrmask.split('/')[0]
         nwk_facts_dict['net.interface.' + iface + '.netmask'] = addrmask.split('/')[1]
         
-    nwk_facts_dict['net.ipv4_address'] =  nwkinfo['ip_address']
+    nwk_facts_dict['net.ipv4_address'] = nwkinfo['ip_address']
+    nwk_facts_dict['network.hostname'] = nwkinfo['hostname']
 
     return nwk_facts_dict
 

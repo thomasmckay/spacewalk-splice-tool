@@ -59,7 +59,7 @@ if __name__ == "__main__":
                            "to file.")
     parser.add_option('--spacewalk-sync', action='store_true', default=None,
                       help="Only sync from spacewalk")
-    parser.add_option('--splice-sync', action='store', default=None,
+    parser.add_option('--splice-sync', action='store_true', default=None,
                       help="Only sync to splice")
     (opts, args) = parser.parse_args()
 
