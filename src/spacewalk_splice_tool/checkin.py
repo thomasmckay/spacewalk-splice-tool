@@ -84,7 +84,6 @@ def transform_facts_to_rcs(facts):
 def transform_entitlements_to_rcs(entitlements):
     rcs_ents = []
     for e in entitlements:
-        #pp.pprint(e)
         rcs_ent = {}
         #rcs_ent['account'] = e['accountNumber']
         rcs_ent['contract'] = e['contractNumber']
@@ -92,7 +91,6 @@ def transform_entitlements_to_rcs(entitlements):
         rcs_ent['quantity'] = e['quantity']
         rcs_ents.append(rcs_ent)
 
-    print "entitlements to rcs: %s" % rcs_ents
 
     return rcs_ents
         
@@ -110,8 +108,6 @@ def transform_to_rcs(consumer):
     as a MarketingProductUsage obj
     """
 
-    pp = pprint.PrettyPrinter(indent=4)
-    pprint.pprint(consumer)
     retval = {}
     retval['splice_server'] = _get_splice_server_uuid()
     retval['date'] = consumer['checkin_time']
@@ -127,7 +123,6 @@ def transform_to_rcs(consumer):
     #retval['entitlement_status'] = consumer['entitlementStatus']
     retval['organization_id'] = str(consumer['environment']['organization_id'])
     retval['organization_name'] = consumer['environment']['organization']
-    print retval
     return retval
 
 
@@ -516,7 +511,6 @@ def splice_sync(options):
                                         rmu['instance_identifier']))}), 
                                         rcs_mkt_usage)
    
-    print rcs_mkt_usage 
     #rules_data = cpin_client.getRules()
     pool_data = cpin_client.getPools()
     #product_data = cpin_client.getProducts()
