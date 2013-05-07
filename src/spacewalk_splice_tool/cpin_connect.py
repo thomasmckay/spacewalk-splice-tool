@@ -56,7 +56,10 @@ class CandlepinConnection():
         self.distributorapi  = DistributorAPI()
         self.provapi  = ProviderAPI()
         self.infoapi  = CustomInfoAPI()
-        s = server.KatelloServer(CONFIG.get("katello", "hostname"), CONFIG.get("katello", "port"), 'https', '/katello')
+        s = server.KatelloServer(CONFIG.get("katello", "hostname"),
+                                 CONFIG.get("katello", "port"),
+                                 'https',
+                                 CONFIG.get("katello", "api_url"))
         s.set_auth_method(BasicAuthentication(CONFIG.get("katello", "admin_user"), CONFIG.get("katello", "admin_pass")))
         server.set_active_server(s)
 
