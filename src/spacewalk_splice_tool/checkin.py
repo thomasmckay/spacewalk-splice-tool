@@ -12,7 +12,6 @@
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
 from optparse import OptionParser
 import json
-import pprint
 import time
 import tempfile
 import io
@@ -46,7 +45,6 @@ def get_product_ids(subscribedchannels, clone_map):
     """
     For the subscribed base and child channels look up product ids
     """
-    print "CHANNELS: %s" % subscribedchannels
     mapping_file = os.path.join(
         os.path.join(constants.CHANNEL_PRODUCT_ID_MAPPING_DIR,
                      utils.get_release()),
@@ -67,7 +65,6 @@ def get_product_ids(subscribedchannels, clone_map):
     for p in product_ids:
         product_cert = cert_dir.findByProduct(str(p))
         installed_products.append({"productId": product_cert.products[0].id, "productName": product_cert.products[0].name})
-    print "INSTALLED PRODUCTS: %s" % installed_products
     return installed_products
 
 
@@ -217,7 +214,7 @@ def upload_to_rcs(rules_data, pool_data, product_data, mpu_data, sample_json=Non
         _LOG.info("sending metadata to server")
         url = "/v1/spliceserver/"
         status, body = splice_conn.POST(url, splice_server_data)
-        _LOG.info("POST to %s: received %s %s" % (url, status, body))
+        _LOG.debug("POST to %s: received %s %s" % (url, status, body))
         if status != 204:
             _LOG.error("Splice server metadata was not uploaded correctly")
             utils.system_exit(os.EX_DATAERR, "Error uploading splice server data")
@@ -225,7 +222,7 @@ def upload_to_rcs(rules_data, pool_data, product_data, mpu_data, sample_json=Non
         # upload the data to rcs
         url = "/v1/marketingproductusage/"
         status, body = splice_conn.POST(url, mpu_data)
-        _LOG.info("POST to %s: received %s %s" % (url, status, body))
+        _LOG.debug("POST to %s: received %s %s" % (url, status, body))
         if status != 202 and status != 204:
             _LOG.error("MarketingProductUsage data was not uploaded correctly")
             utils.system_exit(os.EX_DATAERR, "Error uploading marketing product usage data")
@@ -402,6 +399,7 @@ def delete_stale_consumers(cpin_client, consumer_list, system_list):
     
     _LOG.info("removing %s consumers that are no longer in spacewalk" % len(consumers_to_delete))
     for consumer in consumers_to_delete:
+        _LOG.info("removed consumer %s" % consumer['name'])
         cpin_client.deleteConsumer(consumer['uuid'])
 
 def upload_to_candlepin(consumers, sw_client, cpin_client):
@@ -415,7 +413,10 @@ def upload_to_candlepin(consumers, sw_client, cpin_client):
         sysids_to_uuids[consumer['name']] = consumer['uuid']
     sw_sysids_from_kt = map(lambda x: x['name'], consumers_from_kt)
 
+    done = 0
     for consumer in consumers:
+        if (done % 10) == 0:
+            _LOG.info("%s consumers uploaded so far." % done)
         if cpin_client.findBySpacewalkID("satellite-%s" % consumer['owner'], consumer['id']):
             cpin_client.updateConsumer(cp_uuid=sysids_to_uuids[consumer['name']],
                                           sw_id = consumer['id'],
@@ -432,6 +433,7 @@ def upload_to_candlepin(consumers, sw_client, cpin_client):
                                                 last_checkin=consumer['last_checkin'],
                                                 owner=consumer['owner'],
                                                 spacewalk_server_hostname=CONFIG.get('spacewalk', 'host'))
+        done += 1
 
 def get_checkin_config():
     return {
@@ -473,6 +475,7 @@ def channel_mapping(channels):
 
 def update_system_channel(systems, channels):
 
+    _LOG.info("calculating base channels from cloned channels")
     channel_map = channel_mapping(channels)
     for system in systems:
         system['software_channel'] = channel_map.get(
@@ -484,12 +487,12 @@ def spacewalk_sync(options):
     """
     Performs the data capture, translation and checkin to candlepin
     """
+    _LOG.info("Started capturing system data from spacewalk")
     client = SpacewalkClient(CONFIG.get('spacewalk', 'host'),
                              CONFIG.get('spacewalk', 'ssh_key_path'))
     cpin_client = CandlepinConnection()
     consumers = []
 
-    _LOG.info("Started capturing system data from spacewalk database and transforming to candlepin model")
     _LOG.info("retrieving data from spacewalk")
     sw_user_list = client.get_user_list()
     system_details = client.get_system_list()
@@ -504,7 +507,7 @@ def spacewalk_sync(options):
     cpin_consumer_list = cpin_client.getConsumers()
     delete_stale_consumers(cpin_client, cpin_consumer_list, system_details)
 
-    _LOG.info("enriching %s spacewalk records" % len(system_details))
+    _LOG.info("adding installed products to %s spacewalk records" % len(system_details))
     # enrich with engineering product IDs
     clone_mapping = []
     map(lambda details :
@@ -513,8 +516,8 @@ def spacewalk_sync(options):
 
     # convert the system details to candlepin consumers
     consumers.extend(transform_to_consumers(system_details))
-    _LOG.info("found %s systems to upload into candlepin" % len(consumers))
-    _LOG.info("uploading to candlepin...")
+    _LOG.info("found %s systems to upload into katello" % len(consumers))
+    _LOG.info("uploading to katello...")
     upload_to_candlepin(consumers, client, cpin_client)
     _LOG.info("upload completed")
 
@@ -523,11 +526,11 @@ def splice_sync(options):
     """
     Syncs data from candlepin to splice
     """
-    _LOG.info("downloading consumers from candlepin")
+    _LOG.info("Started syncing system data to splice")
     # now pull put out of candlepin, and into rcs!
     cpin_consumers = get_candlepin_consumers()
     cpin_client = CandlepinConnection()
-    _LOG.info("creating marketingproductusage objects")
+    _LOG.info("calculating marketing product usage")
 
     # create the base marketing usage list
     rcs_mkt_usage = map(transform_to_rcs, cpin_consumers)
@@ -549,7 +552,7 @@ def splice_sync(options):
     #pool_data = cpin_client.getPools()
     #product_data = cpin_client.getProducts()
 
-    _LOG.info("uploading to RCS")
+    _LOG.info("uploading to splice...")
     upload_to_rcs(rules_data=build_rcs_data([rules_data]), 
         pool_data=build_rcs_data(pool_data), 
         product_data=build_rcs_data(product_data), 
