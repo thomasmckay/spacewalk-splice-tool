@@ -46,7 +46,6 @@ def get_product_ids(subscribedchannels, clone_map):
     """
     For the subscribed base and child channels look up product ids
     """
-    print "CHANNELS: %s" % subscribedchannels
     channel_mappings = utils.read_mapping_file(constants.CHANNEL_PRODUCT_ID_MAPPING)
     product_ids = []
     for channel in subscribedchannels.split(';'):
@@ -63,7 +62,6 @@ def get_product_ids(subscribedchannels, clone_map):
     for p in product_ids:
         product_cert = cert_dir.findByProduct(str(p))
         installed_products.append({"productId": product_cert.products[0].id, "productName": product_cert.products[0].name})
-    print "INSTALLED PRODUCTS: %s" % installed_products
     return installed_products
 
 
@@ -77,7 +75,7 @@ def get_splice_serv_id():
 def transform_facts_to_rcs(facts):
     # rcs doesn't like the "." in fact names
     rcs_facts = {}
-    
+
     for f in facts.keys():
         rcs_facts[f.replace('.', '_dot_')] = facts[f]
 
@@ -86,12 +84,15 @@ def transform_facts_to_rcs(facts):
 def transform_entitlements_to_rcs(entitlements):
     rcs_ents = []
     for e in entitlements:
+        #pp.pprint(e)
         rcs_ent = {}
-        rcs_ent['account'] = e['accountNumber']
+        #rcs_ent['account'] = e['accountNumber']
         rcs_ent['contract'] = e['contractNumber']
-        rcs_ent['product'] = e['pool']['productId']
+        #rcs_ent['product'] = e['pool']['productId']
         rcs_ent['quantity'] = e['quantity']
         rcs_ents.append(rcs_ent)
+
+    print "entitlements to rcs: %s" % rcs_ents
 
     return rcs_ents
         
@@ -109,19 +110,24 @@ def transform_to_rcs(consumer):
     as a MarketingProductUsage obj
     """
 
+    pp = pprint.PrettyPrinter(indent=4)
+    pprint.pprint(consumer)
     retval = {}
     retval['splice_server'] = _get_splice_server_uuid()
-    retval['date'] = consumer['lastCheckin']
-    retval['organization'] = consumer['owner']
+    retval['date'] = consumer['checkin_time']
+    # XXX: is this needed?
+    #retval['organization'] = consumer['environment']['organization']
     retval['name'] = consumer['name']
     retval['service_level'] = consumer['serviceLevel']
     # these two fields are populated by rcs
     retval['created'] = ""
     retval['updated'] = ""
+    retval['hostname'] = consumer['facts']['network.hostname']
     retval['instance_identifier'] = consumer['uuid']
-    retval['entitlement_status'] = consumer['entitlementStatus']
-    retval['organization_id'] = consumer['owner']['key']
-    retval['organization_name'] = consumer['owner']['displayName']
+    #retval['entitlement_status'] = consumer['entitlementStatus']
+    retval['organization_id'] = str(consumer['environment']['organization_id'])
+    retval['organization_name'] = consumer['environment']['organization']
+    print retval
     return retval
 
 
@@ -135,6 +141,8 @@ def transform_to_consumers(system_details):
     consumer_list = []
     for details in system_details:
         facts_data = facts.translate_sw_facts_to_subsmgr(details)
+        # assume 3.1, so large certs can bind to this consumer
+        facts_data['system.certificate_version'] = '3.1'
         consumer = dict()
         consumer['id'] = details['server_id']
         consumer['facts'] = facts_data
@@ -170,10 +178,6 @@ def get_candlepin_entitlements(uuid):
     candlepin_conn = CandlepinConnection()
     return candlepin_conn.getEntitlements(uuid)
 
-def get_candlepin_consumer_facts(uuid):
-    candlepin_conn = CandlepinConnection()
-    return candlepin_conn.getConsumer(uuid)['facts']
-
 def write_sample_json(sample_json, rules_data, pool_data, product_data, mpu_data, splice_server_data):
     def write_file(file_name, data):
         if not data:
@@ -197,7 +201,7 @@ def write_sample_json(sample_json, rules_data, pool_data, product_data, mpu_data
     write_file("sst_mpu.json", mpu_data)
     write_file("sst_splice_server.json", splice_server_data)
 
-def upload_to_rcs(rules_data, pool_data, product_data, mpu_data, sample_json=None):
+def upload_to_rcs(mpu_data, sample_json=None):
     try:
         cfg = get_checkin_config()
         splice_conn = BaseConnection(cfg["host"], cfg["port"], cfg["handler"],
@@ -225,30 +229,6 @@ def upload_to_rcs(rules_data, pool_data, product_data, mpu_data, sample_json=Non
         if status != 202 and status != 204:
             _LOG.error("MarketingProductUsage data was not uploaded correctly")
             utils.systemExit(os.EX_DATAERR, "Error uploading marketing product usage data")
-
-        # Upload Rules
-        #url = "/v1/rules/"
-        #status, body = splice_conn.POST(url, rules_data)
-        #_LOG.info("POST to %s: received %s %s" % (url, status, body))
-        #if status != 202 and status != 204:
-        #    _LOG.error("Rules data was not uploaded correctly")
-        #    utils.systemExit(os.EX_DATAERR, "Error uploading rules data")
-        #
-        ## Upload Pools
-        #url = "/v1/pool/"
-        #status, body = splice_conn.POST(url, pool_data)
-        #_LOG.info("POST to %s: received %s %s" % (url, status, body))
-        #if status != 202 and status != 204:
-        #    _LOG.error("Pool data was not uploaded correctly")
-        #    utils.systemExit(os.EX_DATAERR, "Error uploading pool data")
-        #
-        ## Upload Products
-        #url = "/v1/product/"
-        #status, body = splice_conn.POST(url, product_data)
-        #_LOG.info("POST to %s: received %s %s" % (url, status, body))
-        #if status != 202 and status != 204:
-        #    _LOG.error("Products data was not uploaded correctly")
-        #    utils.systemExit(os.EX_DATAERR, "Error uploading products data")
 
         utils.systemExit(os.EX_OK, "Upload was successful")
     except Exception, e:
@@ -527,12 +507,7 @@ def splice_sync(options):
 
     # create the base marketing usage list
     rcs_mkt_usage = map(transform_to_rcs, cpin_consumers)
-    # enrich with facts
-    map(lambda rmu : 
-            rmu.update(
-                {'facts': transform_facts_to_rcs(
-                            get_candlepin_consumer_facts(
-                                rmu['instance_identifier']))}), rcs_mkt_usage)
+
     # enrich with product usage info
     map(lambda rmu : 
             rmu.update(
@@ -540,17 +515,16 @@ def splice_sync(options):
                                     get_candlepin_entitlements(
                                         rmu['instance_identifier']))}), 
                                         rcs_mkt_usage)
-    
+   
+    print rcs_mkt_usage 
     #rules_data = cpin_client.getRules()
-    #pool_data = cpin_client.getPools()
+    pool_data = cpin_client.getPools()
     #product_data = cpin_client.getProducts()
 
+    (rules_data, pool_data, product_data) = ('', '', '')
+
     _LOG.info("uploading to RCS")
-    upload_to_rcs(rules_data=build_rcs_data([rules_data]), 
-        pool_data=build_rcs_data(pool_data), 
-        product_data=build_rcs_data(product_data), 
-        mpu_data=build_rcs_data(rcs_mkt_usage), 
-                                sample_json=options.sample_json)
+    upload_to_rcs(mpu_data=build_rcs_data(rcs_mkt_usage), sample_json=options.sample_json)
     _LOG.info("upload completed")
 
 
