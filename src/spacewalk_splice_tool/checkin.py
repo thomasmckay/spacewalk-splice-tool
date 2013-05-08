@@ -89,12 +89,11 @@ def transform_entitlements_to_rcs(entitlements):
     rcs_ents = []
     for e in entitlements:
         rcs_ent = {}
-        #rcs_ent['account'] = e['accountNumber']
+        rcs_ent['account'] = e['accountNumber']
         rcs_ent['contract'] = e['contractNumber']
-        #rcs_ent['product'] = e['pool']['productId']
+        rcs_ent['product'] = e['productId']
         rcs_ent['quantity'] = e['quantity']
         rcs_ents.append(rcs_ent)
-
 
     return rcs_ents
         
@@ -127,6 +126,7 @@ def transform_to_rcs(consumer):
     #retval['entitlement_status'] = consumer['entitlementStatus']
     retval['organization_id'] = str(consumer['environment']['organization_id'])
     retval['organization_name'] = consumer['environment']['organization']
+    retval['facts'] = transform_facts_to_rcs(consumer['facts'])
     return retval
 
 
@@ -177,7 +177,7 @@ def get_katello_entitlements(uuid):
     katello_conn = KatelloConnection()
     return katello_conn.getEntitlements(uuid)
 
-def write_sample_json(sample_json, rules_data, pool_data, product_data, mpu_data, splice_server_data):
+def write_sample_json(sample_json, mpu_data, splice_server_data):
     def write_file(file_name, data):
         if not data:
             return
@@ -194,24 +194,19 @@ def write_sample_json(sample_json, rules_data, pool_data, product_data, mpu_data
                 f.close()
         except Exception, e:
             _LOG.exception("Unable to write sample json for: %s" % (target_path))
-    write_file("sst_rules.json", rules_data)
-    write_file("sst_pool.json", pool_data)
-    write_file("sst_product.json", product_data)
     write_file("sst_mpu.json", mpu_data)
     write_file("sst_splice_server.json", splice_server_data)
 
 def upload_to_rcs(mpu_data, sample_json=None):
+    cfg = get_checkin_config()
+    splice_conn = BaseConnection(cfg["host"], cfg["port"], cfg["handler"],
+        cert_file=cfg["cert"], key_file=cfg["key"], ca_cert=cfg["ca"])
+
+    splice_server_data = build_server_metadata(cfg)
+    if sample_json:
+        write_sample_json(sample_json=sample_json, mpu_data=mpu_data,
+                            splice_server_data=splice_server_data)
     try:
-        cfg = get_checkin_config()
-        splice_conn = BaseConnection(cfg["host"], cfg["port"], cfg["handler"],
-            cert_file=cfg["cert"], key_file=cfg["key"], ca_cert=cfg["ca"])
-
-        splice_server_data = build_server_metadata(cfg)
-        if sample_json:
-            write_sample_json(sample_json=sample_json, rules_data=rules_data, 
-                pool_data=pool_data, product_data=product_data,
-                mpu_data=mpu_data, splice_server_data=splice_server_data)
-
         # upload the server metadata to rcs
         _LOG.info("sending metadata to server")
         url = "/v1/spliceserver/"
@@ -543,11 +538,3 @@ def main(options):
 
     finish_time = time.time() - start_time
     _LOG.info("run complete") 
-
-
-if __name__ == "__main__":
-    parser = OptionParser(description="Spacewalk Splice Tool")
-    parser.add_option('--sample_json', action="store", default=None,
-        help="Specify a directory to write the json data sent to Splice, if not specified no data is written to file.")
-    (opts, args) = parser.parse_args()
-    main(sample_json=opts.sample_json)
