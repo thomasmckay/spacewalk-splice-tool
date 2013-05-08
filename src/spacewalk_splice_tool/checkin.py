@@ -229,7 +229,7 @@ def upload_to_rcs(mpu_data, sample_json=None):
             _LOG.error("MarketingProductUsage data was not uploaded correctly")
             utils.system_exit(os.EX_DATAERR, "Error uploading marketing product usage data")
 
-        utils.systemExit(os.EX_OK, "Upload was successful")
+        utils.system_exit(os.EX_OK, "Upload was successful")
     except Exception, e:
         _LOG.error("Error uploading MarketingProductUsage Data; Error: %s" % e)
         utils.system_exit(os.EX_DATAERR, "Error uploading; Error: %s" % e)
