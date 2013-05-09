@@ -114,8 +114,6 @@ def transform_to_rcs(consumer):
     retval = {}
     retval['splice_server'] = _get_splice_server_uuid()
     retval['date'] = consumer['checkin_time']
-    # XXX: is this needed?
-    #retval['organization'] = consumer['environment']['organization']
     retval['name'] = consumer['name']
     retval['service_level'] = consumer['serviceLevel']
     # these two fields are populated by rcs
@@ -123,7 +121,7 @@ def transform_to_rcs(consumer):
     retval['updated'] = ""
     retval['hostname'] = consumer['facts']['network.hostname']
     retval['instance_identifier'] = consumer['uuid']
-    #retval['entitlement_status'] = consumer['entitlementStatus']
+    retval['entitlement_status'] = consumer['entitlement_status']
     retval['organization_id'] = str(consumer['environment']['organization_id'])
     retval['organization_name'] = consumer['environment']['organization']
     retval['facts'] = transform_facts_to_rcs(consumer['facts'])
@@ -199,14 +197,14 @@ def write_sample_json(sample_json, mpu_data, splice_server_data):
 
 def upload_to_rcs(mpu_data, sample_json=None):
     cfg = get_checkin_config()
-    splice_conn = BaseConnection(cfg["host"], cfg["port"], cfg["handler"],
-        cert_file=cfg["cert"], key_file=cfg["key"], ca_cert=cfg["ca"])
-
-    splice_server_data = build_server_metadata(cfg)
-    if sample_json:
-        write_sample_json(sample_json=sample_json, mpu_data=mpu_data,
-                            splice_server_data=splice_server_data)
     try:
+        splice_conn = BaseConnection(cfg["host"], cfg["port"], cfg["handler"],
+            cert_file=cfg["cert"], key_file=cfg["key"], ca_cert=cfg["ca"])
+
+        splice_server_data = build_server_metadata(cfg)
+        if sample_json:
+            write_sample_json(sample_json=sample_json, mpu_data=mpu_data,
+                            splice_server_data=splice_server_data)
         # upload the server metadata to rcs
         _LOG.info("sending metadata to server")
         url = "/v1/spliceserver/"

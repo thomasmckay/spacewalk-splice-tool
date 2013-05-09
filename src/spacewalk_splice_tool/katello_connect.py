@@ -82,6 +82,9 @@ class KatelloConnection():
     def getEntitlements(self, system_id):
         return self.systemapi.subscriptions(system_id=system_id)['entitlements']
 
+    def getSubscriptionStatus(self, system_uuid):
+        return self.systemapi.subscription_status(uuid=system_uuid)
+
     def createOwner(self, label, name):
         org = self.orgapi.create(name, label, "no description")
         library = self.envapi.library_by_org(org['label'])
@@ -122,8 +125,6 @@ class KatelloConnection():
 
         self.infoapi.add_custom_info(informable_type='system', informable_id=returned['id'],
                                         keyname='spacewalk-id', value=sw_uuid) 
-        self.infoapi.add_custom_info(informable_type='system', informable_id=returned['id'],
-                                        keyname='spacewalk-server-hostname', value=spacewalk_server_hostname) 
 
         return consumer['uuid']
         
@@ -131,8 +132,6 @@ class KatelloConnection():
     
     def updateConsumer(self, name, cp_uuid, facts, installed_products, last_checkin, sw_id, owner=None, guest_uuids=None,
                         release=None, service_level=None):
-        # XXX: need to support altering owner of existing consumer
-
         params = {}
         params['name'] = name
         if installed_products is not None:
@@ -152,6 +151,8 @@ class KatelloConnection():
         self.systemapi.refresh_subscriptions(cp_uuid)
 
     def getConsumers(self, owner=None):
+        # TODO: this has a lot of logic and could be refactored
+        
         # the API wants "orgId" but they mean "label"
         org_ids = map(lambda x: x['label'], self.orgapi.organizations())
         consumer_list = []
@@ -163,12 +164,14 @@ class KatelloConnection():
         full_consumers_list = []
         # unfortunately, we need to call again to get the "full" consumer with facts
         for consumer in consumer_list:
-            full_consumers_list.append(self.getConsumer(consumer['uuid']))
+            full_consumer = self._getConsumer(consumer['uuid'])
+            full_consumer['entitlement_status'] = self.getSubscriptionStatus(consumer['uuid'])
+            full_consumers_list.append(full_consumer)
 
         return full_consumers_list
     
 
-    def getConsumer(self, consumer_uuid):
+    def _getConsumer(self, consumer_uuid):
         return self.systemapi.system(system_id=consumer_uuid)
 
     def deleteConsumer(self, consumer_uuid):
