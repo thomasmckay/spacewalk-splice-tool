@@ -10,23 +10,27 @@
 # NON-INFRINGEMENT, or FITNESS FOR A PARTICULAR PURPOSE. You should
 # have received a copy of GPLv2 along with this software; if not, see
 # http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
-from optparse import OptionParser
-import json
-import time
-import tempfile
+
+from datetime import datetime
 import io
+import json
+import logging
+from optparse import OptionParser
 import os
 import re
-import sys
-import logging
 import socket
+import sys
+import tempfile
+import time
+
+from certutils import certutils
+from dateutil.tz import tzutc
+from splice.common.connect import BaseConnection
+import splice.common.utils
 
 from spacewalk_splice_tool import facts, connect, utils, constants
 from spacewalk_splice_tool.sw_client import SpacewalkClient
 from spacewalk_splice_tool.katello_connect import KatelloConnection, NotFoundException
-from certutils import certutils
-from datetime import datetime
-from dateutil.tz import tzutc
 
 _LIBPATH = "/usr/share/rhsm"
 # add to the path if need be
@@ -34,8 +38,6 @@ if _LIBPATH not in sys.path:
     sys.path.append(_LIBPATH)
 
 from subscription_manager.certdirectory import CertificateDirectory
-from splice.common.connect import BaseConnection
-import splice.common.utils
 
 _LOG = logging.getLogger(__name__)
 CONFIG = None
