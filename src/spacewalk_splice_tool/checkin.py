@@ -19,6 +19,7 @@ import os
 import re
 import sys
 import logging
+import socket
 
 from spacewalk_splice_tool import facts, connect, utils, constants
 from spacewalk_splice_tool.sw_client import SpacewalkClient
@@ -525,6 +526,8 @@ def main(options):
 
     start_time = time.time()
     _LOG.info("run starting")
+
+    socket.setdefaulttimeout(CONFIG.getfloat('main', 'socket_timeout'))
 
     if options.spacewalk_sync:
         spacewalk_sync(options)

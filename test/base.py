@@ -31,8 +31,9 @@ class SpliceToolTest(unittest.TestCase):
 
     def setUp(self):
         super(SpliceToolTest, self).setUp()
-        self.mock_config()
+        self.config = self.mock_config()
         self.mock(utils, 'get_release', 'RHEL-6.4')
+        self.mock(utils, 'cfg_init', self.config)
         constants.CHANNEL_PRODUCT_ID_MAPPING_DIR = 'data'
 
     def tearDown(self):
@@ -57,6 +58,7 @@ class SpliceToolTest(unittest.TestCase):
         
         defaults = {'spacewalk': {'host': 'spacewalkhost',
                                   'ssh_key_path': 'spacwealk_ssh_key_path'},
+                    'main': {'socket_timeout': '300'},
                    }
 
         config = SafeConfigParser(defaults)
@@ -68,6 +70,8 @@ class SpliceToolTest(unittest.TestCase):
                 config.set(section, key, value)
 
         checkin.CONFIG = config
+
+        return config
 
     def unmock_config(self):
         checkin.CONFIG = self.old_config

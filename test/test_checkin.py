@@ -13,6 +13,7 @@
 
 
 from mock import Mock, patch
+import socket
 
 from base import SpliceToolTest
 
@@ -59,6 +60,8 @@ class CheckinTest(SpliceToolTest):
         self.assertTrue(mocked_sw_sync.called)
         self.assertTrue(mocked_splice_sync.called)
         reset()
+
+        self.assertEquals(socket.getdefaulttimeout(), 300)
 
     def test_spacewalk_sync(self):
         mocked_sw_client_class = self.mock(checkin, 'SpacewalkClient')
