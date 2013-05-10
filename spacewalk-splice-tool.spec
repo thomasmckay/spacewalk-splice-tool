@@ -1,6 +1,6 @@
 # spacewalk-splice-tool package
 Name:           spacewalk-splice-tool
-Version:        0.11
+Version:        0.12
 Release:        1%{?dist}
 Summary:        A tool for gathering active system checkin data from spacewalk server and report to Splice server
 
@@ -70,6 +70,63 @@ rm -rf %{buildroot}
 %doc LICENSE
 
 %changelog
+* Fri May 10 2013 Chris Duryee (beav) <cduryee@redhat.com>
+- use new style entitlement_status (cduryee@redhat.com)
+- katello->splice changes (cduryee@redhat.com)
+- rename most candlepin identifiers to katello (jslagle@redhat.com)
+- Make top level url for katello api configurable (jslagle@redhat.com)
+- Logging updates (jslagle@redhat.com)
+- Better test for spacewalk_sync (jslagle@redhat.com)
+- Systems are now keyed by name (jslagle@redhat.com)
+- Refactor to not call getRelease on import (jslagle@redhat.com)
+- Add test base class (jslagle@redhat.com)
+- Set cores per socket fact (jslagle@redhat.com)
+- use config options for katello connection, and send up spacewalk hostname
+  (cduryee@redhat.com)
+- use system name instead of spacewalk ID, and leave OS field blank
+  (cduryee@redhat.com)
+- use name instead of spacewalk id (cduryee@redhat.com)
+- remove some dead code (cduryee@redhat.com)
+- Update code to call correct report (jslagle@redhat.com)
+- Rename cp-export (jslagle@redhat.com)
+- Update synopsis and description of cp-export (jslagle@redhat.com)
+- do a checkin and refresh when creating/updating systems (cduryee@redhat.com)
+- link distributors when creating new orgs (cduryee@redhat.com)
+- Fix config variable reference (jslagle@redhat.com)
+- Move ssh options to config file (jslagle@redhat.com)
+- Fix channel setting (jslagle@redhat.com)
+- Cloned channel report for spacewalk (jslagle@redhat.com)
+- Fix clone channel logic for new report (jslagle@redhat.com)
+- cloned channel lookup (jslagle@redhat.com)
+- Merging upstream master into role change branch (cduryee@redhat.com)
+- handle sat admin syncing (cduryee@redhat.com)
+- Nothing requires rhic-serve-common anymore (jslagle@redhat.com)
+- remove some print statements (cduryee@redhat.com)
+- syncing roles (cduryee@redhat.com)
+- additional fixes (jslagle@redhat.com)
+- Fix config file path (jslagle@redhat.com)
+- typo (jslagle@redhat.com)
+- Script itself should actually call ssh (jslagle@redhat.com)
+- No longer require spacewalk-reports (jslagle@redhat.com)
+- Move checkin.conf to just /etc/splice (jslagle@redhat.com)
+- Add needed variables to functions (jslagle@redhat.com)
+- Run both sync options if neither is specified (jslagle@redhat.com)
+- create needed dir (jslagle@redhat.com)
+- Fix file location (jslagle@redhat.com)
+- Fix file attrs (jslagle@redhat.com)
+- spec file updates (jslagle@redhat.com)
+- Bash script andcron config for running sst (jslagle@redhat.com)
+- refactor into seperate syncs (jslagle@redhat.com)
+- remove systems when deleted in sw (cduryee@redhat.com)
+- sync org deletes, and unit tests (cduryee@redhat.com)
+- import order (jslagle@redhat.com)
+- Be sure to always release lockfile (jslagle@redhat.com)
+- Add options for seperate sync steps (jslagle@redhat.com)
+- whitespace (jslagle@redhat.com)
+- Add vim swap files to .gitignore (jslagle@redhat.com)
+- lots of changes to support katello (cduryee@redhat.com)
+- s/owner/organization in url, no oauth, WIP on owner sync (cduryee@redhat.com)
+
 * Tue Apr 16 2013 John Matthews <jwmatthews@gmail.com> 0.11-1
 - Added a CLI option: --sample-json if set to a path we will output the json
   data we send to Splice as separate files (jwmatthews@gmail.com)
