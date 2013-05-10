@@ -44,7 +44,7 @@ CONFIG = None
 
 SAT_OWNER_PREFIX = 'satellite-'
 
-def get_product_ids(subscribedchannels, clone_map):
+def get_product_ids(subscribedchannels):
     """
     For the subscribed base and child channels look up product ids
     """
@@ -56,8 +56,6 @@ def get_product_ids(subscribedchannels, clone_map):
 
     product_ids = []
     for channel in subscribedchannels.split(';'):
-        # grab the origin
-        #origin_channel = clone_map[channel['channel_label']]
         origin_channel = channel
         if origin_channel in channel_mappings:
             cert = channel_mappings[origin_channel]
@@ -485,8 +483,9 @@ def spacewalk_sync(options):
     # enrich with engineering product IDs
     clone_mapping = []
     map(lambda details :
-            details.update({'installed_products' : get_product_ids(details['software_channel'],
-                            clone_mapping)}), system_details)
+            details.update({'installed_products' : \
+                            get_product_ids(details['software_channel'])}),
+                           system_details)
 
     # convert the system details to katello consumers
     consumers.extend(transform_to_consumers(system_details))
