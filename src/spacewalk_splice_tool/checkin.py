@@ -113,6 +113,7 @@ def transform_to_rcs(consumer):
     """
 
     retval = {}
+
     retval['splice_server'] = _get_splice_server_uuid()
     retval['date'] = consumer['checkin_time']
     retval['name'] = consumer['name']
@@ -123,8 +124,8 @@ def transform_to_rcs(consumer):
     retval['hostname'] = consumer['facts']['network.hostname']
     retval['instance_identifier'] = consumer['uuid']
     retval['entitlement_status'] = consumer['entitlement_status']
-    retval['organization_id'] = str(consumer['environment']['organization_id'])
-    retval['organization_name'] = consumer['environment']['organization']
+    retval['organization_id'] = str(consumer['owner']['key'])
+    retval['organization_name'] = consumer['owner']['displayName']
     retval['facts'] = transform_facts_to_rcs(consumer['facts'])
     return retval
 
