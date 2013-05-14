@@ -44,6 +44,8 @@ CONFIG = None
 
 SAT_OWNER_PREFIX = 'satellite-'
 
+CERT_DIR = CertificateDirectory("/usr/share/rhsm/product/RHEL-6/")
+
 def get_product_ids(subscribedchannels):
     """
     For the subscribed base and child channels look up product ids
@@ -61,11 +63,9 @@ def get_product_ids(subscribedchannels):
             cert = channel_mappings[origin_channel]
             product_ids.append(cert.split('-')[-1].split('.')[0])
     # reformat to how candlepin expects the product id list
-    # TODO: extremely inefficient to load this per-call!
-    cert_dir = CertificateDirectory("/usr/share/rhsm/product/RHEL-6/")
     installed_products = []
     for p in product_ids:
-        product_cert = cert_dir.findByProduct(str(p))
+        product_cert = CERT_DIR.findByProduct(str(p))
         installed_products.append({"productId": product_cert.products[0].id, "productName": product_cert.products[0].name})
     return installed_products
 
