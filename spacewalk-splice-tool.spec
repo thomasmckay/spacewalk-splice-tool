@@ -1,6 +1,6 @@
 # spacewalk-splice-tool package
 Name:           spacewalk-splice-tool
-Version:        0.12
+Version:        0.13
 Release:        1%{?dist}
 Summary:        A tool for gathering active system checkin data from spacewalk server and report to Splice server
 
@@ -70,6 +70,10 @@ rm -rf %{buildroot}
 %doc LICENSE
 
 %changelog
+* Tue May 14 2013 Chris Duryee (beav) <cduryee@redhat.com>
+- use owner key instead of ID when populating MPU (cduryee@redhat.com)
+- Set default socket timeout from config file (jslagle@redhat.com)
+
 * Fri May 10 2013 Chris Duryee (beav) <cduryee@redhat.com>
 - use new style entitlement_status (cduryee@redhat.com)
 - katello->splice changes (cduryee@redhat.com)
