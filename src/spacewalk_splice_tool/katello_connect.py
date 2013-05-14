@@ -150,7 +150,7 @@ class KatelloConnection():
         self.systemapi.checkin(cp_uuid, self._convert_date(last_checkin))
         self.systemapi.refresh_subscriptions(cp_uuid)
 
-    def getConsumers(self, owner=None):
+    def getConsumers(self, owner=None, with_details=True):
         # TODO: this has a lot of logic and could be refactored
         
         # the API wants "orgId" but they mean "label"
@@ -161,6 +161,10 @@ class KatelloConnection():
         
         # flatten the list
         consumer_list = list(itertools.chain.from_iterable(consumer_list))
+        # return what we have, if we don't need the detailed list
+        if not with_details:
+            return consumer_list
+
         full_consumers_list = []
         # unfortunately, we need to call again to get the "full" consumer with facts
         for consumer in consumer_list:

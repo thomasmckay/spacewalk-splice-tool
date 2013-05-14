@@ -369,23 +369,31 @@ def delete_stale_consumers(katello_client, consumer_list, system_list):
         _LOG.info("removed consumer %s" % consumer['name'])
         katello_client.deleteConsumer(consumer['uuid'])
 
-def upload_to_katello(consumers, sw_client, katello_client):
+def upload_host_guest_mapping(host_guests, katello_client):
+    """
+    updates katello consumers that have guests. This has to happen after an
+    initial update, so we have UUIDs for all systems
+    """
+    pass
+
+def upload_to_katello(consumers, katello_client):
     """
     Uploads consumer data to katello
     """
 
-    consumers_from_kt = katello_client.getConsumers()
-    sysids_to_uuids = {}
+    # TODO: this can go away and be refactored to use findBySpacewalkID within
+    # the loop
+    consumers_from_kt = katello_client.getConsumers(with_details=False)
+    names_to_uuids = {}
     for consumer in consumers_from_kt:
-        sysids_to_uuids[consumer['name']] = consumer['uuid']
-    sw_sysids_from_kt = map(lambda x: x['name'], consumers_from_kt)
+        names_to_uuids[consumer['name']] = consumer['uuid']
 
     done = 0
     for consumer in consumers:
         if (done % 10) == 0:
             _LOG.info("%s consumers uploaded so far." % done)
         if katello_client.findBySpacewalkID("satellite-%s" % consumer['owner'], consumer['id']):
-            katello_client.updateConsumer(cp_uuid=sysids_to_uuids[consumer['name']],
+            katello_client.updateConsumer(cp_uuid=names_to_uuids[consumer['name']],
                                           sw_id = consumer['id'],
                                           name = consumer['name'],
                                           facts=consumer['facts'],
@@ -464,6 +472,7 @@ def spacewalk_sync(options):
     sw_user_list = client.get_user_list()
     system_details = client.get_system_list()
     channel_details = client.get_channel_list()
+    hosts_guests = client.get_host_guest_list()
     update_system_channel(system_details, channel_details)
     org_list = client.get_org_list()
 
@@ -486,8 +495,11 @@ def spacewalk_sync(options):
     consumers.extend(transform_to_consumers(system_details))
     _LOG.info("found %s systems to upload into katello" % len(consumers))
     _LOG.info("uploading to katello...")
-    upload_to_katello(consumers, client, katello_client)
-    _LOG.info("upload completed")
+    upload_to_katello(consumers, katello_client)
+    _LOG.info("upload completed")#. updating with guest info..")
+#    consumer_list = katello_client.getConsumers(with_details=False)
+#    upload_host_guest_mapping(consumer_list, katello_client)
+#    _LOG.info("guest upload completed")
 
 
 def splice_sync(options):

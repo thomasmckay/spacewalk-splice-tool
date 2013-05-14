@@ -97,6 +97,10 @@ class CheckinTest(SpliceToolTest):
         self.assertTrue(upload_to_cp.called)
         self.assertEquals(2, len(upload_to_cp.call_args[0][0]))
 
+    def test_host_guest_sync(self):
+        mocked_cp_client = Mock()
+        checkin.upload_host_guest_mapping(consumer_list, mocked_cp_client)
+
 
 user_list = [{'username': 'admin', 
               'first_name': 'James', 
