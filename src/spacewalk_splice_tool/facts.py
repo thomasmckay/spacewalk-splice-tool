@@ -38,11 +38,11 @@ def cpu_facts(cpuinfo):
     # we set this to 1 by default so candlepin does not remove the field from
     # the facts list. This is needed so the fact can bubble through to RCS.
     cpu_socket_count = 1
-    if cpuinfo.has_key("sockets") and cpuinfo['sockets'] is not "":
+    if cpuinfo.has_key("sockets") and len(cpuinfo['sockets']) > 0:
         cpu_socket_count = cpuinfo['sockets']
 
     cpu_count = 1
-    if cpuinfo.has_key("hardware"):
+    if cpuinfo.has_key("hardware") and len(cpuinfo['hardware']) > 0:
         cpu_count = cpuinfo['hardware'].split(';')[0].split()[0]
 
     cpu_facts_dict = dict()
@@ -83,7 +83,8 @@ def memory_facts(meminfo):
     Translate memory info
     """
     mem_facts_dict = dict()
-    mem_facts_dict['memory.memtotal'] = int(meminfo['memory']) * 1024
+    if meminfo.has_key('memory') and len(meminfo['memory']) > 0:
+        mem_facts_dict['memory.memtotal'] = int(meminfo['memory']) * 1024
     return mem_facts_dict
 
 
