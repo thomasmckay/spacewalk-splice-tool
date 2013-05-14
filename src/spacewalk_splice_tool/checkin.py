@@ -355,16 +355,10 @@ def delete_stale_consumers(katello_client, consumer_list, system_list):
 
     system_id_list = map(lambda x: x['name'], system_list)
 
-    owner_labels = {}
-    owner_list = katello_client.getOwners()
-    for owner in owner_list:
-        owner_labels[owner['id']] = owner['label']
-    
-  
     consumers_to_delete = [] 
     for consumer in consumer_list:
         # don't delete consumers that are not in orgs we manage!
-        if not owner_labels[consumer['environment']['organization_id']].startswith(SAT_OWNER_PREFIX):
+        if not consumer['owner']['key'].startswith(SAT_OWNER_PREFIX):
             continue
         if consumer['name'] not in system_id_list:
             consumers_to_delete.append(consumer)
