@@ -107,11 +107,11 @@ class TestObjectSync(SpliceToolTest):
                          ]
 
         kt_consumer_list = [
-                            { 'name': '100', 'uuid': '1-1-1', 'owner': {'key': 'satellite-2'}},
-                            { 'name': '101', 'uuid': '1-1-2', 'owner': {'key': 'satellite-1'}},
-                            { 'name': '102', 'uuid': '1-1-3', 'owner': {'key': 'satellite-2'}},
-                            { 'name': '102', 'uuid': '1-1-4', 'owner': {'key': 'NOT-A-SAT-ORG'}},
-                            { 'name': '107', 'uuid': '1-1-5', 'owner': {'key': 'satellite-1'}},
+                            { 'name': '100', 'uuid': '1-1-1', 'owner': {'key': 'satellite-2'}, 'facts': {'systemid': '100'}},
+                            { 'name': '101', 'uuid': '1-1-2', 'owner': {'key': 'satellite-1'}, 'facts': {'systemid': '101'}},
+                            { 'name': '102', 'uuid': '1-1-3', 'owner': {'key': 'satellite-2'}, 'facts': {'systemid': '102'}},
+                            { 'name': '102', 'uuid': '1-1-4', 'owner': {'key': 'NOT-A-SAT-ORG'}, 'facts': {'systemid': '103'}},
+                            { 'name': '107', 'uuid': '1-1-5', 'owner': {'key': 'satellite-1'}, 'facts': {'systemid': '107'}}
                          ]
         checkin.delete_stale_consumers(self.cp_client, kt_consumer_list, sw_system_list)
         expected = [call('1-1-3'), call('1-1-5')]

@@ -358,16 +358,17 @@ def delete_stale_consumers(katello_client, consumer_list, system_list):
     up any systems that were deleted in spacewalk.
     """
 
-    system_id_list = map(lambda x: x['name'], system_list)
+    system_id_list = map(lambda x: x['server_id'], system_list)
 
-    consumers_to_delete = [] 
+    _LOG.debug("system id list from sw: %s" % system_id_list)
+    consumers_to_delete = []
     for consumer in consumer_list:
+        _LOG.debug("checking %s for deletion" % consumer['facts']['systemid'])
         # don't delete consumers that are not in orgs we manage!
         if not consumer['owner']['key'].startswith(SAT_OWNER_PREFIX):
             continue
-        if consumer['name'] not in system_id_list:
+        if consumer['facts']['systemid'] not in system_id_list:
             consumers_to_delete.append(consumer)
-
     
     _LOG.info("removing %s consumers that are no longer in spacewalk" % len(consumers_to_delete))
     for consumer in consumers_to_delete:
