@@ -44,12 +44,17 @@ CONFIG = None
 
 SAT_OWNER_PREFIX = 'satellite-'
 
-CERT_DIR = CertificateDirectory("/usr/share/rhsm/product/RHEL-6/")
+CERT_DIR_PATH = "/usr/share/rhsm/product/RHEL-6/"
+CERT_DIR = None
 
 def get_product_ids(subscribedchannels):
     """
     For the subscribed base and child channels look up product ids
     """
+    if CERT_DIR is None:
+        global CERT_DIR
+        CERT_DIR = CertificateDirectory(CERT_DIR_PATH)
+
     mapping_file = os.path.join(
         os.path.join(constants.CHANNEL_PRODUCT_ID_MAPPING_DIR,
                      utils.get_release()),

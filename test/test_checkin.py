@@ -25,14 +25,6 @@ class CheckinTest(SpliceToolTest):
 
     def setUp(self):
         super(CheckinTest, self).setUp()
-        mocked_cd_class = self.mock(checkin, 'CertificateDirectory')
-        mocked_cd = Mock()
-        mocked_cd_class.return_value = mocked_cd
-        product_cert = Mock()
-        product = Mock()
-        product.configure_mock(id=69, name='Red Hat Enterprise Linux Server')
-        product_cert.configure_mock(products=[product])
-        mocked_cd.findByProduct.return_value = product_cert
 
     def test_main(self):
         mocked_sw_sync = self.mock(checkin, 'spacewalk_sync')

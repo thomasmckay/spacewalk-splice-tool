@@ -32,8 +32,10 @@ class SpliceToolTest(unittest.TestCase):
     def setUp(self):
         super(SpliceToolTest, self).setUp()
         self.config = self.mock_config()
+        self.mock_cert_dir()
         self.mock(utils, 'get_release', 'RHEL-6.4')
         self.mock(utils, 'cfg_init', self.config)
+
         constants.CHANNEL_PRODUCT_ID_MAPPING_DIR = 'data'
 
     def tearDown(self):
@@ -75,3 +77,12 @@ class SpliceToolTest(unittest.TestCase):
 
     def unmock_config(self):
         checkin.CONFIG = self.old_config
+
+    def mock_cert_dir(self):
+        mocked_cd = Mock()
+        product_cert = Mock()
+        product = Mock()
+        product.configure_mock(id=69, name='Red Hat Enterprise Linux Server')
+        product_cert.configure_mock(products=[product])
+        mocked_cd.findByProduct.return_value = product_cert
+        self.mock(checkin, 'CertificateDirectory', mocked_cd)
