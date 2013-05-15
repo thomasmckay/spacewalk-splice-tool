@@ -83,7 +83,7 @@ class KatelloConnection():
         return self.systemapi.subscriptions(system_id=system_id)['entitlements']
 
     def getSubscriptionStatus(self, system_uuid):
-        return self.systemapi.subscription_status(uuid=system_uuid)
+        return self.systemapi.subscription_status(system_id=system_uuid)
 
     def createOwner(self, label, name):
         org = self.orgapi.create(name, label, "no description")
