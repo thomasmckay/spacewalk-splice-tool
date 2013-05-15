@@ -86,10 +86,7 @@ class KatelloConnection():
         return self.systemapi.subscription_status(system_id=system_uuid)
 
     def createOwner(self, label, name):
-        org = self.orgapi.create(name, label, "no description")
-        library = self.envapi.library_by_org(org['label'])
-        self.envapi.create(org['label'], "spacewalk_env", "spacewalk_environment", '', library['id'])
-        return org
+        return self.orgapi.create(name, label, "no description")
 
     def deleteOwner(self, name):
         # todo: error handling, not sure if orgapi will handle it
