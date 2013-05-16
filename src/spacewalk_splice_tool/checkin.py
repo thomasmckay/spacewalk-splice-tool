@@ -129,7 +129,7 @@ def transform_to_rcs(consumer):
     retval['hostname'] = consumer['facts']['network.hostname']
     retval['instance_identifier'] = consumer['uuid']
     retval['entitlement_status'] = consumer['entitlement_status']
-    retval['organization_id'] = str(consumer['owner']['key'])
+    retval['organization_id'] = str(consumer['environment']['organization_id'])
     retval['organization_name'] = consumer['owner']['displayName']
     retval['facts'] = transform_facts_to_rcs(consumer['facts'])
     return retval
